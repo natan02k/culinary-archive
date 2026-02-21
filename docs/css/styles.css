@@ -590,30 +590,14 @@ button {
 
 /* MOBILE RESPONSIVENESS */
 @media (max-width: 768px) {
-  /* Comprehensive mobile viewport fix */
-  html, body {
-    height: 100vh;
-    min-height: 100vh;
-    width: 100%;
-    overflow-x: hidden;
-    position: fixed;
-    top: 0;
-    left: 0;
-  }
-
-  /* Create scrollable container */
-  body {
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Ensure background covers everything */
+  /* iPhone specific fixes */
   html {
-    background: var(--bg-gradient);
+    height: -webkit-fill-available;
   }
 
   body {
-    background: var(--bg-gradient);
+    height: -webkit-fill-available;
+    min-height: 100vh;
   }
 
   .container {
@@ -825,30 +809,6 @@ button {
 }
 
 @media (max-width: 480px) {
-  /* Apply same viewport fix for very small screens */
-  html, body {
-    height: 100vh;
-    min-height: 100vh;
-    width: 100%;
-    overflow-x: hidden;
-    position: fixed;
-    top: 0;
-    left: 0;
-  }
-
-  body {
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  html {
-    background: var(--bg-gradient);
-  }
-
-  body {
-    background: var(--bg-gradient);
-  }
-
   .container {
     padding: 0 0.75rem;
   }
