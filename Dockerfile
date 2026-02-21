@@ -14,11 +14,11 @@ RUN mvn package -DskipTests
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
-# Copy the fat jar from the build stage
-COPY --from=build /app/target/*-fat.jar app.jar
+# Wir kopieren einfach ALLE gebauten JAR-Dateien in den aktuellen Ordner
+COPY --from=build /app/target/*.jar ./
 
-# Render injects the PORT environment variable
-EXPOSE ${PORT}
+# Render injects the PORT environment variable (Fallback auf 8888)
+EXPOSE ${PORT:-8888}
 
-# Run the jar file
-CMD ["java", "-jar", "app.jar"]
+# Trick: Sucht die größte JAR-Datei im Ordner und startet diese
+CMD ["sh", "-c", "java -jar $(ls -S *.jar | head -n 1)"]
