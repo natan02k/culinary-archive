@@ -19,13 +19,13 @@
       <div class="nav-brand text-gradient" style="cursor: pointer;" onclick="app.showFeed()">🔥 Culinary Archive</div>
       <div class="nav-links">
         <div id="authLinks" style="display: flex; gap: 1rem; align-items: center;">
-          <button class="nav-link" style="background:none;" onclick="app.showFeed()">Entdecken</button>
+          <button class="btn-primary" onclick="document.getElementById('feed').scrollIntoView({behavior: 'smooth'})">Entdecken</button>
           <button class="btn-glass" onclick="openModal('authModal')">Login</button>
         </div>
         <div id="userMenu" style="display: none; align-items: center; gap: 1rem;">
           <div class="level-badge" id="navLevelBadge" title="Dein aktuelles Level!"
             style="width: 40px; height: 40px; font-size: 1.2rem;">1</div>
-          <button class="nav-link" style="background:none;" onclick="app.showFeed()">Entdecken</button>
+          <button class="btn-primary" onclick="document.getElementById('feed').scrollIntoView({behavior: 'smooth'})">Entdecken</button>
           <button class="nav-link" style="background:none;" onclick="app.showProfile()">Profil & Rezepte</button>
           <button class="nav-link" style="background:none; color: var(--text-muted);"
             onclick="app.logout()">Logout</button>
@@ -70,11 +70,6 @@
       <h1>Koche. Teile.<br><span class="text-gradient">Level Up!</span></h1>
       <p>Entdecke die besten Rezepte der Community. Teile deine eigenen Meisterwerke, sammle XP und steige im Level auf.
         Verwandle deine Küche in ein Spiel.</p>
-      <div class="hero-buttons">
-        <button class="btn-primary"
-          onclick="document.getElementById('feed').scrollIntoView({behavior: 'smooth'})">Entdecken</button>
-        <button class="btn-glass" id="heroAuthBtn" onclick="openModal('authModal')">Login</button>
-      </div>
     </div>
     <div class="hero-visuals">
       <div class="floating-circle c1"></div>
