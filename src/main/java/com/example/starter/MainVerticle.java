@@ -72,6 +72,8 @@ public class MainVerticle extends AbstractVerticle {
     SessionHandler sessionHandler = SessionHandler.create(LocalSessionStore.create(vertx));
     sessionHandler.setCookieSameSite(io.vertx.core.http.CookieSameSite.NONE); // Lax prevents the browser dropping the cookie without Secure flag
     // sessionHandler.setCookieSecure(false) is not needed/doesn't exist in all Vert.x versions
+    // WICHTIG: Sagt dem Browser, dass das Cookie über das sichere HTTPS von Render kommt!
+    sessionHandler.setCookieSecureFlag(true);
     router.route().handler(sessionHandler);
 
     router.post("/api/login").handler(ctx -> {
