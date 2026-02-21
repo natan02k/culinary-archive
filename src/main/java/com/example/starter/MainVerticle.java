@@ -70,7 +70,7 @@ public class MainVerticle extends AbstractVerticle {
     router.route().handler(BodyHandler.create().setUploadsDirectory("webroot/images"));
     
     SessionHandler sessionHandler = SessionHandler.create(LocalSessionStore.create(vertx));
-    sessionHandler.setCookieSameSite(io.vertx.core.http.CookieSameSite.LAX); // Lax prevents the browser dropping the cookie without Secure flag
+    sessionHandler.setCookieSameSite(io.vertx.core.http.CookieSameSite.NONE); // Lax prevents the browser dropping the cookie without Secure flag
     // sessionHandler.setCookieSecure(false) is not needed/doesn't exist in all Vert.x versions
     router.route().handler(sessionHandler);
 
