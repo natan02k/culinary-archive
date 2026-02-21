@@ -1,5 +1,5 @@
-const API_BASE = 'http://localhost:8888/api';
-const HOST = 'http://localhost:8888';
+const API_BASE = 'https://culinary-archive.onrender.com/api';
+const HOST = 'https://culinary-archive.onrender.com';
 
 // Scroll Animation Observer (Premium Feel)
 const observer = new IntersectionObserver((entries) => {
