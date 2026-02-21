@@ -54,7 +54,7 @@ public class MainVerticle extends AbstractVerticle {
     Router router = Router.router(vertx);
 
     // CORS for Github Pages / Frontend
-    router.route().handler(CorsHandler.create("http://localhost:3000") // Must be exact origin for credentials, not .*
+    router.route().handler(CorsHandler.create("http://localhost:3000|https://natan02k\\.github\\.io") // Must be exact origin for credentials, not .*
       .allowCredentials(true)
       .allowedMethod(HttpMethod.GET)
       .allowedMethod(HttpMethod.POST)
@@ -606,8 +606,18 @@ public class MainVerticle extends AbstractVerticle {
     router.route("/images/*").handler(StaticHandler.create("webroot/images")); // Expose images publicly
     router.route("/*").handler(StaticHandler.create("webroot"));
 
-    vertx.createHttpServer().requestHandler(router).listen(8888, http -> {
-        if (http.succeeded()) LOGGER.info("HTTP server started on port 8888! Ready for Frontend Option A.");
+    int port = 8888;
+    String envPort = System.getenv("PORT");
+    if (envPort != null) {
+      try {
+        port = Integer.parseInt(envPort);
+      } catch (NumberFormatException e) {
+        LOGGER.warning("Invalid PORT env variable, defaulting to 8888");
+      }
+    }
+
+    vertx.createHttpServer().requestHandler(router).listen(port, "0.0.0.0", http -> {
+        if (http.succeeded()) LOGGER.info("HTTP server started on port " + http.result().actualPort() + "!");
         else LOGGER.severe("Failed to start HTTP Server");
     });
   }
