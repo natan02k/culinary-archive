@@ -65,8 +65,12 @@ public class MainVerticle extends AbstractVerticle {
 
     Router router = Router.router(vertx);
 
-    // CORS for Github Pages / Frontend
-    router.route().handler(CorsHandler.create("http://localhost:3000|https://natan02k\\.github\\.io") // Must be exact origin for credentials, not .*
+    // CORS for development and production
+    router.route().handler(CorsHandler.create()
+      .addOrigin("http://localhost:3000")
+      .addOrigin("http://localhost:8888")
+      .addOrigin("https://natan02k.github.io")
+      .addOrigin("https://natan02k.github.io/*")
       .allowCredentials(true)
       .allowedMethod(HttpMethod.GET)
       .allowedMethod(HttpMethod.POST)
