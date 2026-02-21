@@ -142,7 +142,22 @@ const app = {
   },
 
   async checkAuth() {
+    // First check if we have a JWT token
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+      // No token - user is not logged in
+      this.user = null;
+      document.getElementById('authLinks').style.display = 'flex';
+      document.getElementById('userMenu').style.display = 'none';
+      if (document.getElementById('heroAuthBtn')) document.getElementById('heroAuthBtn').style.display = 'inline-block';
+      document.getElementById('floatingAddBtn').style.display = 'none';
+      document.getElementById('gamificationDashboard').style.display = 'none';
+      this.showFeed();
+      return;
+    }
+
     try {
+      // Token exists - verify it with server
       const { username } = await this.req('/check-login');
       const profile = await this.req('/profile');
       this.user = profile;
@@ -163,6 +178,8 @@ const app = {
 
       this.showFeed(); // Default view when logging in
     } catch (err) {
+      // Token is invalid - remove it and show login
+      localStorage.removeItem('jwt_token');
       this.user = null;
       document.getElementById('authLinks').style.display = 'flex';
       document.getElementById('userMenu').style.display = 'none';
