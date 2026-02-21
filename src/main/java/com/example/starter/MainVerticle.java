@@ -6,10 +6,13 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.SessionHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.ext.web.handler.CorsHandler;
-import io.vertx.ext.web.sstore.LocalSessionStore;
+import io.vertx.ext.auth.jwt.JWTAuth;
+import io.vertx.ext.auth.jwt.JWTAuthOptions;
+import io.vertx.ext.auth.JWTOptions;
+import io.vertx.ext.auth.PubSecKeyOptions;
+import io.vertx.ext.auth.authentication.TokenCredentials;
 import io.vertx.mysqlclient.MySQLConnectOptions;
 import io.vertx.mysqlclient.MySQLPool;
 import io.vertx.sqlclient.PoolOptions;
@@ -33,6 +36,7 @@ public class MainVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = Logger.getLogger(MainVerticle.class.getName());
   private MySQLPool client;
+  private JWTAuth jwtAuth;
 
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
@@ -51,6 +55,14 @@ public class MainVerticle extends AbstractVerticle {
 
     client = MySQLPool.pool(vertx, connectOptions, poolOptions);
 
+    // JWT Authentication setup
+    JWTAuthOptions config = new JWTAuthOptions()
+      .addPubSecKey(new PubSecKeyOptions()
+        .setAlgorithm("HS256")
+        .setBuffer("your-secret-key-here-change-in-production"));
+    
+    jwtAuth = JWTAuth.create(vertx, config);
+
     Router router = Router.router(vertx);
 
     // CORS for Github Pages / Frontend
@@ -65,16 +77,10 @@ public class MainVerticle extends AbstractVerticle {
       .allowedHeader("Access-Control-Allow-Origin")
       .allowedHeader("Access-Control-Allow-Credentials")
       .allowedHeader("Access-Control-Allow-Headers")
-      .allowedHeader("Content-Type"));
+      .allowedHeader("Content-Type")
+      .allowedHeader("Authorization"));
 
     router.route().handler(BodyHandler.create().setUploadsDirectory("webroot/images"));
-    
-    SessionHandler sessionHandler = SessionHandler.create(LocalSessionStore.create(vertx));
-    sessionHandler.setCookieSameSite(io.vertx.core.http.CookieSameSite.NONE); // Lax prevents the browser dropping the cookie without Secure flag
-    // sessionHandler.setCookieSecure(false) is not needed/doesn't exist in all Vert.x versions
-    // WICHTIG: Sagt dem Browser, dass das Cookie über das sichere HTTPS von Render kommt!
-    sessionHandler.setCookieSecureFlag(true);
-    router.route().handler(sessionHandler);
 
     router.post("/api/login").handler(ctx -> {
       JsonObject body = ctx.getBodyAsJson();
@@ -92,8 +98,17 @@ public class MainVerticle extends AbstractVerticle {
           if (res.succeeded() && res.result().size() > 0) {
             String storedPassword = res.result().iterator().next().getString("passwort");
             if (password.equals(storedPassword)) {
-              ctx.session().put("username", username);
-              ctx.response().setStatusCode(200).end(new JsonObject().put("message", "Login erfolgreich").encode());
+              // Generate JWT token
+              String token = jwtAuth.generateToken(
+                new JsonObject().put("username", username),
+                new JWTOptions().setExpiresInSeconds(86400) // 24 hours
+              );
+              ctx.response().setStatusCode(200).end(
+                new JsonObject()
+                  .put("message", "Login erfolgreich")
+                  .put("token", token)
+                  .encode()
+              );
             } else {
               ctx.response().setStatusCode(401).end(new JsonObject().put("error", "Falsches Passwort").encode());
             }
@@ -104,12 +119,8 @@ public class MainVerticle extends AbstractVerticle {
     });
 
     router.post("/api/logout").handler(ctx -> {
-      if (ctx.session().get("username") != null) {
-        ctx.session().destroy();
-        ctx.response().setStatusCode(200).end(new JsonObject().put("message", "Logout erfolgreich").encode());
-      } else {
-        ctx.response().setStatusCode(401).end(new JsonObject().put("error", "Nicht eingeloggt").encode());
-      }
+      // With JWT, logout is handled client-side by removing the token
+      ctx.response().setStatusCode(200).end(new JsonObject().put("message", "Logout erfolgreich - remove token from client").encode());
     });
 
     router.post("/api/register").handler(ctx -> {
@@ -147,7 +158,7 @@ public class MainVerticle extends AbstractVerticle {
     });
 
     router.get("/api/check-login").handler(ctx -> {
-      String username = ctx.session().get("username");
+      String username = getUsernameFromToken(ctx);
       if (username != null) {
         ctx.response().setStatusCode(200).end(new JsonObject().put("message", "Eingeloggt").put("username", username).encode());
       } else {
@@ -156,7 +167,7 @@ public class MainVerticle extends AbstractVerticle {
     });
 
     router.get("/api/profile").handler(ctx -> {
-      String username = ctx.session().get("username");
+      String username = getUsernameFromToken(ctx);
       if (username == null) {
         ctx.response().setStatusCode(401).end(new JsonObject().put("error", "Nicht eingeloggt").encode());
         return;
@@ -183,7 +194,7 @@ public class MainVerticle extends AbstractVerticle {
     });
 
     router.post("/api/profile/image").handler(ctx -> {
-      String username = ctx.session().get("username");
+      String username = getUsernameFromToken(ctx);
       if (username == null) {
         ctx.response().setStatusCode(401).end(new JsonObject().put("error", "Nicht eingeloggt").encode());
         return;
@@ -201,7 +212,7 @@ public class MainVerticle extends AbstractVerticle {
     });
 
     router.get("/api/all-recipes").handler(ctx -> {
-      String username = ctx.session().get("username");
+      String username = getUsernameFromToken(ctx);
       client.query("SELECT r.user_id, n.username as autor, r.titel, r.zubereitungszeit, r.kochzeit, r.schwierigkeit, r.zutaten, r.zubereitung, r.rezept_id, r.kategorie, r.tags, r.image_url " +
           "FROM rezept r JOIN nutzer n ON r.user_id = n.user_id ORDER BY r.rezept_id DESC")
         .execute()
@@ -270,7 +281,7 @@ public class MainVerticle extends AbstractVerticle {
     });
 
     router.post("/api/recipes").handler(ctx -> {
-      String username = ctx.session().get("username");
+      String username = getUsernameFromToken(ctx);
       if (username == null) {
         ctx.response().setStatusCode(401).end(new JsonObject().put("error", "Nicht eingeloggt").encode());
         return;
@@ -327,7 +338,7 @@ public class MainVerticle extends AbstractVerticle {
     });
 
     router.post("/api/toggle-like").handler(ctx -> {
-      String username = ctx.session().get("username");
+      String username = getUsernameFromToken(ctx);
       if (username == null) {
         ctx.response().setStatusCode(401).end(); return;
       }
@@ -367,7 +378,7 @@ public class MainVerticle extends AbstractVerticle {
     });
 
     router.get("/api/like-status/:recipeId").handler(ctx -> {
-      String username = ctx.session().get("username");
+      String username = getUsernameFromToken(ctx);
       try {
           int recipeId = Integer.parseInt(ctx.pathParam("recipeId"));
           if(username != null) {
@@ -402,7 +413,7 @@ public class MainVerticle extends AbstractVerticle {
     
     // Edit Recipe
     router.put("/api/recipes/:id").handler(ctx -> {
-        String username = ctx.session().get("username");
+        String username = getUsernameFromToken(ctx);
         if (username == null) { ctx.response().setStatusCode(401).end(); return; }
         try {
             int recipeId = Integer.parseInt(ctx.pathParam("id"));
@@ -454,7 +465,7 @@ public class MainVerticle extends AbstractVerticle {
 
     // Delete Recipe
     router.delete("/api/recipes/:id").handler(ctx -> {
-        String username = ctx.session().get("username");
+        String username = getUsernameFromToken(ctx);
         if (username == null) { ctx.response().setStatusCode(401).end(); return; }
         try {
             int recipeId = Integer.parseInt(ctx.pathParam("id"));
@@ -468,7 +479,7 @@ public class MainVerticle extends AbstractVerticle {
 
     // Edit Profile (Bio / Email / Password / DOB)
     router.put("/api/profile").handler(ctx -> {
-        String username = ctx.session().get("username");
+        String username = getUsernameFromToken(ctx);
         if (username == null) { ctx.response().setStatusCode(401).end(); return; }
         
         String bio = ctx.request().getFormAttribute("bio");
@@ -505,12 +516,12 @@ public class MainVerticle extends AbstractVerticle {
 
     // Delete Profile
     router.delete("/api/profile").handler(ctx -> {
-        String username = ctx.session().get("username");
+        String username = getUsernameFromToken(ctx);
         if (username == null) { ctx.response().setStatusCode(401).end(); return; }
         
         client.preparedQuery("DELETE FROM nutzer WHERE username=?").execute(Tuple.of(username), res -> {
             if (res.succeeded()) {
-                ctx.session().destroy();
+                // With JWT, logout is handled client-side by removing the token
                 ctx.response().setStatusCode(200).end();
             } else ctx.response().setStatusCode(500).end();
         });
@@ -537,7 +548,7 @@ public class MainVerticle extends AbstractVerticle {
 
     // Manage Favorites
     router.post("/api/favorites").handler(ctx -> {
-        String username = ctx.session().get("username");
+        String username = getUsernameFromToken(ctx);
         if (username == null) { ctx.response().setStatusCode(401).end(); return; }
         JsonObject body = ctx.getBodyAsJson();
         if(body == null) { ctx.response().setStatusCode(400).end(); return; }
@@ -551,7 +562,7 @@ public class MainVerticle extends AbstractVerticle {
     });
 
     router.delete("/api/favorites/:id").handler(ctx -> {
-        String username = ctx.session().get("username");
+        String username = getUsernameFromToken(ctx);
         if (username == null) { ctx.response().setStatusCode(401).end(); return; }
         try {
             int recipeId = Integer.parseInt(ctx.pathParam("id"));
@@ -564,7 +575,7 @@ public class MainVerticle extends AbstractVerticle {
     });
 
     router.get("/api/favorites").handler(ctx -> {
-        String username = ctx.session().get("username");
+        String username = getUsernameFromToken(ctx);
         if (username == null) { ctx.response().setStatusCode(401).end(); return; }
         client.preparedQuery("SELECT r.*, n.username as autor FROM favoriten f JOIN rezept r ON f.rezept_id = r.rezept_id JOIN nutzer n ON r.user_id = n.user_id JOIN nutzer active_user ON f.user_id = active_user.user_id WHERE active_user.username = ? ORDER BY r.rezept_id DESC")
               .execute(Tuple.of(username), res -> {
@@ -578,7 +589,7 @@ public class MainVerticle extends AbstractVerticle {
 
     // Comments
     router.post("/api/comments").handler(ctx -> {
-        String username = ctx.session().get("username");
+        String username = getUsernameFromToken(ctx);
         if (username == null) { ctx.response().setStatusCode(401).end(); return; }
         JsonObject body = ctx.getBodyAsJson();
         int recipeId = body.getInteger("rezept_id");
@@ -622,6 +633,21 @@ public class MainVerticle extends AbstractVerticle {
         if (http.succeeded()) LOGGER.info("HTTP server started on port " + http.result().actualPort() + "!");
         else LOGGER.severe("Failed to start HTTP Server");
     });
+  }
+
+  private String getUsernameFromToken(RoutingContext ctx) {
+    String authHeader = ctx.request().getHeader("Authorization");
+    if (authHeader != null && authHeader.startsWith("Bearer ")) {
+      String token = authHeader.substring(7);
+      try {
+        return jwtAuth.authenticate(new TokenCredentials(token))
+          .map(user -> user.principal().getString("username"))
+          .result();
+      } catch (Exception e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   private String handleUpload(RoutingContext ctx, String dirName, String formName) {
