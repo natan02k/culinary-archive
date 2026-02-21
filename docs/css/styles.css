@@ -38,13 +38,23 @@ html.dark {
   font-family: 'Outfit', sans-serif;
 }
 
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   background: var(--bg-gradient);
   background-attachment: fixed;
   color: var(--text);
+  height: 100%;
   min-height: 100vh;
+  margin: 0;
+  padding: 0;
   overflow-x: hidden;
   transition: background 0.4s ease, color 0.4s ease;
+  position: relative;
 }
 
 /* Scrollbar */
@@ -581,6 +591,29 @@ button {
 
 /* MOBILE RESPONSIVENESS */
 @media (max-width: 768px) {
+  /* iPhone specific fixes */
+  html {
+    height: -webkit-fill-available;
+  }
+
+  body {
+    height: -webkit-fill-available;
+    min-height: 100vh;
+  }
+
+  /* Ensure no white bars at top/bottom */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-gradient);
+    z-index: -1;
+    pointer-events: none;
+  }
+
   .container {
     padding: 0 1rem;
   }
