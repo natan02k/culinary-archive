@@ -83,7 +83,14 @@ const app = {
   },
 
   async req(endpoint, method = 'GET', body = null) {
-    const opts = { method, headers: {}, credentials: 'omit' };
+    const opts = { method, headers: {} };
+    
+    // Add JWT token to headers if available
+    const token = localStorage.getItem('jwt_token');
+    if (token) {
+      opts.headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     if (body) {
       if (body instanceof FormData) {
         opts.body = body; // let browser set content-type for multipart
@@ -92,8 +99,8 @@ const app = {
         opts.body = JSON.stringify(body);
       }
     }
-    // Very important: fetch with credentials
-    opts.credentials = 'include';
+    
+    // Remove credentials for JWT - we don't send cookies
     const res = await fetch(`${API_BASE}${endpoint}`, opts);
     let data = null;
     try { data = await res.json(); } catch (e) { }
@@ -116,10 +123,17 @@ const app = {
         await this.req('/register', 'POST', { username, password, email, geburtsdatum: date, bio: "Let's cook!" });
         fireConfetti();
         alert('Account erstellt! Willkommen bei EpicRecipes.');
+      } else {
+        const response = await this.req('/login', 'POST', { username, password });
+        
+        // Save JWT token to localStorage
+        if (response.token) {
+          localStorage.setItem('jwt_token', response.token);
+        }
+        
+        closeModal('authModal');
+        this.checkAuth();
       }
-      await this.req('/login', 'POST', { username, password });
-      closeModal('authModal');
-      this.checkAuth();
     } catch (err) {
       alert(err.message);
     } finally {
@@ -231,6 +245,10 @@ const app = {
 
   async logout() {
     await this.req('/logout', 'POST');
+    
+    // Remove JWT token from localStorage
+    localStorage.removeItem('jwt_token');
+    
     this.checkAuth();
   },
 
