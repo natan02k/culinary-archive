@@ -40,8 +40,21 @@ window.addEventListener('scroll', () => {
 });
 
 // Modal Logic
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+// Modal Logic
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+  if (id === 'recipeModal') {
+    const fab = document.getElementById('floatingAddBtn');
+    if (fab) fab.classList.add('open');
+  }
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+  if (id === 'recipeModal') {
+    const fab = document.getElementById('floatingAddBtn');
+    if (fab) fab.classList.remove('open');
+  }
+}
 
 // Gamification / Confetti
 function fireConfetti() {
@@ -75,55 +88,68 @@ function initHeroParticles() {
   if (!canvas) return;
   const hero = canvas.parentElement;
   let W = hero.offsetWidth, H = hero.offsetHeight;
-  canvas.width = W; canvas.height = H;
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
   const ctx = canvas.getContext('2d');
-  const PARTICLE_COUNT = 14;
+  ctx.scale(dpr, dpr);
+
+  const PARTICLE_COUNT = 18;
   const particles = Array.from({ length: PARTICLE_COUNT }, () => createParticle(W, H, true));
 
   function createParticle(w, h, initial) {
     return {
       x: Math.random() * w,
-      y: initial ? Math.random() * h : h + 30,
-      size: 14 + Math.random() * 14,
-      speed: 0.3 + Math.random() * 0.5,
-      drift: (Math.random() - 0.5) * 0.4,
-      opacity: 0.4 + Math.random() * 0.45,
+      y: initial ? Math.random() * h : h + 50,
+      size: 16 + Math.random() * 20,
+      speed: 0.4 + Math.random() * 0.8,
+      drift: (Math.random() - 0.5) * 0.3,
+      opacity: 0.2 + Math.random() * 0.6,
       rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 0.015,
+      rotationSpeed: (Math.random() - 0.5) * 0.02,
+      wobbleSpeed: 0.001 + Math.random() * 0.002,
+      wobbleOffset: Math.random() * Math.PI * 2,
       emoji: FOOD_EMOJIS[Math.floor(Math.random() * FOOD_EMOJIS.length)]
     };
   }
 
   let raf;
-  function draw() {
+  function draw(time) {
     ctx.clearRect(0, 0, W, H);
     particles.forEach(p => {
       ctx.save();
       ctx.globalAlpha = p.opacity;
-      ctx.font = `${p.size}px serif`;
+      ctx.font = `${p.size}px Arial, sans-serif`;
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rotation);
       ctx.fillText(p.emoji, -p.size / 2, p.size / 2);
       ctx.restore();
+
       p.y -= p.speed;
-      p.x += p.drift;
+      p.x += p.drift + Math.sin(time * p.wobbleSpeed + p.wobbleOffset) * 0.6;
       p.rotation += p.rotationSpeed;
-      if (p.y < -40) Object.assign(p, createParticle(W, H, false), { x: Math.random() * W });
+      if (p.y < -50) Object.assign(p, createParticle(W, H, false), { x: Math.random() * W });
     });
     raf = requestAnimationFrame(draw);
   }
-  draw();
+  raf = requestAnimationFrame(draw);
 
-  // Pause when out of view for performance
   const io = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting) { if (!raf) draw(); }
+    if (entries[0].isIntersecting) { if (!raf) raf = requestAnimationFrame(draw); }
     else { cancelAnimationFrame(raf); raf = null; }
   }, { threshold: 0 });
   io.observe(canvas);
 
   const resizeOb = new ResizeObserver(() => {
     W = hero.offsetWidth; H = hero.offsetHeight;
-    canvas.width = W; canvas.height = H;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform matrix before scaling
+    ctx.scale(dpr, dpr);
   });
   resizeOb.observe(hero);
 }
@@ -160,6 +186,7 @@ const app = {
     initTypewriter();
     this.initDailyQuests();
     this.initWheels();
+    this.initNavSearch();
   },
 
   initWheels() {
@@ -196,6 +223,26 @@ const app = {
     });
   },
 
+  initNavSearch() {
+    const searchWrapper = document.querySelector('.sticky-search-wrapper');
+    const trigger = document.getElementById('searchTrigger');
+    if (!searchWrapper || !trigger) return;
+
+    window.addEventListener('scroll', () => {
+      if (window.innerWidth <= 1300) {
+        searchWrapper.classList.remove('merged');
+        return;
+      }
+
+      const rect = trigger.getBoundingClientRect();
+      if (rect.top <= 101) {
+        searchWrapper.classList.add('merged');
+      } else {
+        searchWrapper.classList.remove('merged');
+      }
+    });
+  },
+
   updateWheel(id) {
     const wrapper = document.getElementById(id + 'Picker');
     if (!wrapper) return;
@@ -222,6 +269,15 @@ const app = {
     const index = Math.floor(val / 5);
     wrapper.scrollTo({ top: index * 48, behavior: 'smooth' });
     setTimeout(() => this.updateWheel(id), 50);
+  },
+
+  toggleCreateModal() {
+    const modal = document.getElementById('recipeModal');
+    if (modal && modal.classList.contains('active')) {
+      closeModal('recipeModal');
+    } else {
+      openModal('recipeModal');
+    }
   },
 
   toggleAuthMode() {
@@ -352,7 +408,7 @@ const app = {
     if (lvl < 5) return 'Sous Chef 🔪';
     if (lvl < 10) return 'Head Chef 🎩';
     if (lvl < 20) return 'Master-Chef ⭐';
-    return 'God of Kitchen 👑';
+    return 'King of Kitchen 👑';
   },
 
   updateGamificationUI({ xp, level, profile_image_url, username }) {
@@ -565,29 +621,34 @@ const app = {
       const recipes = await this.req('/all-recipes');
       this.loadedRecipes = recipes;
 
-      // Determine trending top-3 by likes + top 1 by favorites
+      // Reset and Assign dynamic badges as an array for multiple separate tags
+      recipes.forEach(r => r.highlightBadges = []);
+
       const sortedByLikes = [...recipes].sort((a, b) => (b.likes || 0) - (a.likes || 0));
       const top3Likes = sortedByLikes.slice(0, 3);
 
+      top3Likes.forEach((r, idx) => {
+        if (idx === 0) r.highlightBadges.push('🏆 Platz 1 (Likes)');
+        if (idx === 1) r.highlightBadges.push('🥈 Platz 2 (Likes)');
+        if (idx === 2) r.highlightBadges.push('🥉 Platz 3 (Likes)');
+      });
+
       const sortedByFavs = [...recipes].sort((a, b) => (b.favorites_count || 0) - (a.favorites_count || 0));
       const topFav = sortedByFavs[0];
-
-      // Assign dynamic badges
-      top3Likes.forEach((r, idx) => {
-        if (idx === 0) r.highlightBadge = '🏆 Platz 1 (Likes)';
-        if (idx === 1) r.highlightBadge = '🥈 Platz 2 (Likes)';
-        if (idx === 2) r.highlightBadge = '🥉 Platz 3 (Likes)';
-      });
       if (topFav) {
-        if (!topFav.highlightBadge) topFav.highlightBadge = '⭐ Meiste Favoriten';
-        else topFav.highlightBadge = '🏆 Platz 1 & Favorit';
+        topFav.highlightBadges.push('⭐ Am meisten favorisiert');
       }
 
       const hc = document.getElementById('highlightsContainer');
       const hs = document.getElementById('highlightsSection');
       if (hc && hs) {
-        const highlightSet = new Set([...top3Likes, topFav].filter(Boolean));
-        const highlightRecipes = Array.from(highlightSet);
+        const highlightRecipes = recipes.filter(r => r.highlightBadges.length > 0)
+          // Sort them back to ranking order for display priority
+          .sort((a, b) => {
+            const getRank = r => r.highlightBadges.join('').includes('Platz 1') ? 1 : r.highlightBadges.join('').includes('Platz 2') ? 2 : r.highlightBadges.join('').includes('Platz 3') ? 3 : 4;
+            return getRank(a) - getRank(b);
+          });
+
         if (highlightRecipes.length > 0) {
           hc.innerHTML = highlightRecipes.map(r => this.createRecipeCard(r)).join('');
           hs.style.display = 'block';
@@ -1224,9 +1285,13 @@ const app = {
     const favCount = r.favorites_count || 0;
 
     return `
-      <div class="recipe-card reveal">
-        ${r.highlightBadge ? `<div class="trending-badge">${r.highlightBadge}</div>` : (isTrending ? '<div class="trending-badge">🔥 Top Rezept</div>' : '')}
-        <div class="recipe-image-wrap">
+      <div class="recipe-card reveal" onclick="app.viewRecipe(${r.rezept_id})" style="cursor: pointer;">
+            ${r.highlightBadges && r.highlightBadges.length > 0 ?
+        `<div style="position: absolute; top: 1rem; left: 1rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 10;">
+                ${r.highlightBadges.map(badge => `<div style="background: var(--primary); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold; font-size: 0.8rem; font-family: 'Outfit', sans-serif; box-shadow: 0 4px 10px rgba(251,113,133,0.3);">${badge}</div>`).join('')}
+              </div>`
+        : (isTrending ? '<div class="trending-badge">🔥 Top Rezept</div>' : '')}
+          <div class="recipe-image-wrap">
           <img src="${imgUrl}" alt="${r.titel}" class="recipe-image" loading="lazy" onclick="app.viewRecipe(${r.rezept_id})" style="cursor:pointer;">
         </div>
         <div class="recipe-content">
@@ -1253,19 +1318,21 @@ const app = {
           </div>
           <div style="flex:1"></div>
           
-          <span class="like-btn-group" onclick="event.stopPropagation();">
-            <button class="like-btn ${r.is_favorite ? 'liked' : ''}" onclick="app.toggleFavorite(${r.rezept_id}, this)" title="Zu Favoriten hinzufügen">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="${r.is_favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            </button>
-            <span class="like-counter">${favCount > 0 ? favCount : ''}</span>
-          </span>
-          
-          <span class="like-btn-group" onclick="event.stopPropagation();" style="margin-left:0.25rem;">
-            <button class="like-btn ${r.is_liked ? 'liked' : ''}" onclick="app.toggleLike(${r.rezept_id}, this)" title="Liken für XP!">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="${r.is_liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            </button>
-            <span class="like-counter">${likeCount > 0 ? likeCount : ''}</span>
-          </span>
+          <div style="display: flex; gap: 0.25rem; align-items: center; margin-right: 1rem;">
+            <span class="like-btn-group" onclick="event.stopPropagation();">
+              <button class="like-btn fav-btn ${r.is_favorite ? 'liked' : ''}" onclick="app.toggleFavorite(${r.rezept_id}, this)" title="Zu Favoriten hinzufügen">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="${r.is_favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </button>
+              <span class="like-counter">${favCount > 0 ? favCount : ''}</span>
+            </span>
+            
+            <span class="like-btn-group" onclick="event.stopPropagation();">
+              <button class="like-btn ${r.is_liked ? 'liked' : ''}" onclick="app.toggleLike(${r.rezept_id}, this)" title="Liken für XP!">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="${r.is_liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+              <span class="like-counter">${likeCount > 0 ? likeCount : ''}</span>
+            </span>
+          </div>
         </div>
         </div>
       </div>

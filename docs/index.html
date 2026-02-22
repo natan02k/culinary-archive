@@ -105,7 +105,8 @@
             Rezepte</span></h2>
       </div>
 
-      <div class="sticky-search-wrapper">
+      <div id="searchTrigger"></div>
+      <div class="sticky-search-wrapper" id="mainSearchWrapper">
         <div class="search-bar-container"
           style="display: flex; gap: 1rem; width: 100%; max-width: 600px; position: relative; margin: 0 auto;">
           <div style="position: relative; flex: 1;">
@@ -574,8 +575,8 @@
     </div>
 
     <!-- FLOATING BUTTONS -->
-    <button class="btn-primary" id="floatingAddBtn" onclick="openModal('recipeModal')" title="Neues Rezept erstellen"
-      style="display: none; position: fixed; bottom: 2rem; left: 2rem; z-index: 1000; border-radius: 50%; width: 60px; height: 60px; padding: 0; box-shadow: 0 10px 25px rgba(251, 113, 133, 0.5); font-size: 2rem; justify-content: center; align-items: center;">
+    <button class="btn-primary" id="floatingAddBtn" onclick="app.toggleCreateModal()" title="Neues Rezept erstellen"
+      style="display: none; position: fixed; bottom: 2rem; left: 2rem; z-index: 1000; border-radius: 50%; width: 60px; height: 60px; padding: 0; box-shadow: 0 10px 25px rgba(251, 113, 133, 0.5); font-size: 2rem; justify-content: center; align-items: center; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s, box-shadow 0.3s;">
       +
     </button>
 

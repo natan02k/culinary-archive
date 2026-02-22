@@ -10,7 +10,7 @@
   --primary-hover: #e11d48;
   --secondary: #3b82f6;
   --surface: rgba(255, 255, 255, 0.7);
-  --surface-border: rgba(255, 255, 255, 0.4);
+  --surface-border: rgba(0, 0, 0, 0.15);
   --shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
   --glass-fx: blur(16px);
   --card-bg: #ffffff;
@@ -132,8 +132,8 @@ button {
 .nav-wrapper {
   position: fixed;
   top: 0;
-  left: 0;
-  right: 0;
+  left: 5px;
+  right: 5px;
   z-index: 100;
   padding: 1.5rem 0;
   transition: padding 0.3s ease;
@@ -327,9 +327,10 @@ button {
   position: -webkit-sticky;
   position: sticky;
   top: 100px;
-  z-index: 90;
+  z-index: 105;
   padding: 1rem 0;
-  margin-bottom: 2rem;
+  margin: 0 auto 2rem auto;
+  max-width: 800px;
   background: var(--bg);
   background: color-mix(in srgb, var(--surface) 80%, transparent);
   backdrop-filter: blur(12px);
@@ -337,13 +338,40 @@ button {
   border-radius: 16px;
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--surface-border);
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center;
+  transform: scale(1);
+}
+
+@media (min-width: 1301px) {
+  .sticky-search-wrapper.merged {
+    top: 30px;
+    max-width: 400px;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    border: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transform: scale(0.85);
+  }
+}
+
+@media (max-width: 1300px) {
+  .sticky-search-wrapper {
+    top: 100px;
+  }
 }
 
 @media (max-width: 768px) {
   .sticky-search-wrapper {
-    top: 130px;
-    padding: 0.75rem 0;
-    border-radius: 12px;
+    top: 85px;
+    padding: 0.75rem 1rem;
+    border-radius: 20px;
+    width: 100%;
+    margin: 0 0 2rem 0;
+    box-sizing: border-box;
   }
 }
 
@@ -785,8 +813,8 @@ button {
   gap: 3px;
 }
 
-.like-btn-group .like-btn.liked+.like-counter {
-  color: var(--primary);
+.like-btn.fav-btn.liked {
+  color: #facc15;
 }
 
 /* TOAST NOTIFICATIONS */
@@ -998,38 +1026,46 @@ button {
 
   /* Navigation */
   .navbar {
-    padding: 1rem;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+    padding: 1rem 0.5rem;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
   }
 
   .nav-brand {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     order: 1;
-    flex: 1;
+    flex: 0 1 auto;
+    white-space: nowrap;
   }
 
   .nav-links {
     order: 2;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
+    gap: 0.25rem;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    width: auto;
   }
 
-  .nav-link {
-    font-size: 0.9rem;
-    padding: 0.5rem 0.75rem;
+  .nav-links .btn-primary,
+  .nav-links .btn-glass,
+  .nav-links .nav-link {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
   }
 
   .theme-toggle {
     order: 3;
     margin-left: 0 !important;
+    font-size: 1.1rem;
+    padding: 0.3rem;
   }
 
   /* Hero Section */
   .hero {
-    padding-top: 120px;
+    padding-top: 150px;
     padding-bottom: 60px;
     min-height: 60vh;
     flex-direction: column;
@@ -1118,7 +1154,7 @@ button {
   }
 
   .recipe-content {
-    padding: 0.75rem;
+    padding: 0.5rem;
   }
 
   .recipe-title {
@@ -1146,19 +1182,20 @@ button {
   }
 
   .recipe-stats {
-    flex-wrap: wrap;
-    gap: 0.5rem !important;
+    flex-wrap: nowrap;
+    gap: 0.15rem !important;
     margin-top: 0.5rem !important;
     padding-top: 0.5rem !important;
   }
 
   .stat-item {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
+    gap: 0.15rem;
   }
 
   .stat-item svg {
-    width: 14px !important;
-    height: 14px !important;
+    width: 12px !important;
+    height: 12px !important;
   }
 
   .like-btn {
@@ -1663,7 +1700,7 @@ button {
   left: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  background: rgba(5, 5, 5, 0.98) !important;
+  background: var(--bg) !important;
   backdrop-filter: blur(20px);
   z-index: 999999 !important;
   display: flex !important;
@@ -1673,7 +1710,7 @@ button {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s ease;
-  color: white;
+  color: var(--text);
 }
 
 .zen-overlay.active {
@@ -1685,22 +1722,24 @@ button {
   position: absolute;
   top: 2rem;
   right: 2rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: white;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  color: var(--text);
   width: 50px;
   height: 50px;
   border-radius: 50%;
   font-size: 1.5rem;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.3s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .zen-close:hover {
-  background: rgba(251, 113, 133, 0.5);
+  background: rgba(251, 113, 133, 0.15);
+  color: #fb7185;
+  border-color: #fb7185;
 }
 
 .zen-progress {
@@ -1736,9 +1775,9 @@ button {
 }
 
 .zen-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  color: var(--text);
   padding: 1rem 2rem;
   border-radius: 30px;
   font-size: 1.2rem;
@@ -1748,7 +1787,8 @@ button {
 }
 
 .zen-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--bg);
+  border-color: var(--text-muted);
   transform: translateY(-2px);
 }
 
@@ -1850,6 +1890,16 @@ button {
   z-index: 1;
 }
 
+body:not(.dark-mode) .wheel-picker-container {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+body:not(.dark-mode) .wheel-selector {
+  background: rgba(251, 113, 133, 0.08);
+  border: 1px solid rgba(251, 113, 133, 0.2);
+}
+
 .wheel-picker {
   height: 100%;
   overflow-y: auto;
@@ -1894,4 +1944,13 @@ button {
 .wheel-item.near-bottom {
   transform: rotateX(-30deg) scale(0.95);
   opacity: 0.7;
+}
+
+/* FLOATING ADD BUTTON TRANSFORM */
+#floatingAddBtn.open {
+  transform: rotate(45deg);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
 }
