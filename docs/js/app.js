@@ -366,6 +366,40 @@ const app = {
     this.renderTags(containerId, hiddenInputId);
   },
 
+  addIngredient(inputId, containerId, hiddenInputId) {
+    const input = document.getElementById(inputId);
+    const ing = input.value.trim();
+    if (!ing) return;
+
+    const hidden = document.getElementById(hiddenInputId);
+    let ings = hidden.value ? hidden.value.split('|||') : [];
+    if (!ings.includes(ing)) {
+      ings.push(ing);
+      hidden.value = ings.join('|||');
+      this.renderIngredients(containerId, hiddenInputId);
+    }
+    input.value = '';
+  },
+
+  renderIngredients(containerId, hiddenInputId) {
+    const hidden = document.getElementById(hiddenInputId);
+    const ings = hidden.value ? hidden.value.split('|||') : [];
+    const container = document.getElementById(containerId);
+    container.innerHTML = ings.map(i =>
+      `<span class="ingredient-chip">
+        ${i} <button type="button" class="ingredient-chip-remove" onclick="app.removeIngredient('${i.replace(/'/g, "\\'")}', '${containerId}', '${hiddenInputId}')">&times;</button>
+      </span>`
+    ).join('');
+  },
+
+  removeIngredient(ing, containerId, hiddenInputId) {
+    const hidden = document.getElementById(hiddenInputId);
+    let ings = hidden.value ? hidden.value.split('|||') : [];
+    ings = ings.filter(i => i !== ing);
+    hidden.value = ings.join('|||');
+    this.renderIngredients(containerId, hiddenInputId);
+  },
+
   async logout() {
     await this.req('/logout', 'POST');
 
@@ -406,6 +440,21 @@ const app = {
   async submitRecipe(e) {
     e.preventDefault();
     if (!this.user) return alert('Bitte einloggen!');
+
+    // Validate Preparation Steps Numbering
+    const stepsText = document.getElementById('rSteps').value.trim();
+    if (!/^(1\.|1\))\s/.test(stepsText)) {
+      showToast("Die Zubereitung muss mit '1.' oder '1)' beginnen!", "error");
+      return;
+    }
+
+    // Validate Ingredients
+    const ingsArray = document.getElementById('rIngArray').value;
+    if (!ingsArray) {
+      showToast("Bitte füge mindestens eine Zutat hinzu!", "error");
+      return;
+    }
+
     const fd = new FormData();
     fd.append('titel', document.getElementById('rTitle').value);
     fd.append('zubereitungszeit', document.getElementById('rPrep').value);
@@ -413,8 +462,8 @@ const app = {
     fd.append('schwierigkeit', document.getElementById('rDiff').value);
     fd.append('kategorie', document.getElementById('rCat').value);
     fd.append('tags', document.getElementById('rTagsArray').value);
-    fd.append('zutaten', document.getElementById('rIng').value);
-    fd.append('zubereitung', document.getElementById('rSteps').value);
+    fd.append('zutaten', ingsArray); // Using the hidden array string (separated by |||)
+    fd.append('zubereitung', stepsText);
 
     const currFile = document.getElementById('recipeImageInput').files[0];
     if (currFile) fd.append('image', currFile);
@@ -424,6 +473,8 @@ const app = {
       fireConfetti();
       closeModal('recipeModal');
       e.target.reset();
+      document.getElementById('rIngArray').value = '';
+      document.getElementById('rIngContainer').innerHTML = '';
       document.getElementById('imagePreview').style.display = 'none';
       // Refresh user to get new XP (+50)
       this.checkAuth();
@@ -662,8 +713,23 @@ const app = {
       tagsContainer.innerHTML = '';
     }
 
-    // Use marked.js to render the markdown
-    document.getElementById('viewIng').innerHTML = marked.parse(r.zutaten || '');
+    // Parse ingredients (handling both old markdown and new chip format)
+    let ingArray = [];
+    if (r.zutaten) {
+      if (r.zutaten.includes('|||')) {
+        ingArray = r.zutaten.split('|||').map(s => s.trim()).filter(s => s);
+      } else {
+        // Fallback for old markdown
+        ingArray = r.zutaten.split(/\r?\n/).map(s => s.replace(/[#*_-]/g, '').trim()).filter(s => s);
+      }
+    }
+
+    const ingContainer = document.getElementById('viewIng');
+    if (ingArray.length > 0) {
+      ingContainer.innerHTML = '<div style="display:flex; flex-wrap:wrap; gap:0.5rem;">' + ingArray.map(i => `<span class="ingredient-chip">${i}</span>`).join('') + '</div>';
+    } else {
+      ingContainer.innerHTML = '<p style="color:var(--text-muted)">Keine Zutaten angegeben.</p>';
+    }
     document.getElementById('viewSteps').innerHTML = marked.parse(r.zubereitung || '');
 
     // Current recipe ID for comments
@@ -853,11 +919,11 @@ const app = {
     document.getElementById('eDiff').value = r.schwierigkeit;
     document.getElementById('eCat').value = r.kategorie;
     document.getElementById('eTagsArray').value = r.tags || '';
-    document.getElementById('eIng').value = r.zutaten || '';
+    document.getElementById('eIngArray').value = r.zutaten || '';
     document.getElementById('eSteps').value = r.zubereitung || '';
 
     this.renderTags('eTagsContainer', 'eTagsArray');
-    this.updateLivePreview('eIng', 'eIngPreview');
+    this.renderIngredients('eIngContainer', 'eIngArray');
     this.updateLivePreview('eSteps', 'eStepsPreview');
 
     document.getElementById('editRecipeRemoveImage').value = 'false';
@@ -879,6 +945,21 @@ const app = {
   async submitEditRecipe(e) {
     e.preventDefault();
     const id = document.getElementById('editRezeptId').value;
+
+    // Validate Preparation Steps Numbering
+    const stepsText = document.getElementById('eSteps').value.trim();
+    if (!/^(1\.|1\))\s/.test(stepsText)) {
+      showToast("Die Zubereitung muss mit '1.' oder '1)' beginnen!", "error");
+      return;
+    }
+
+    // Validate Ingredients
+    const ingsArray = document.getElementById('eIngArray').value;
+    if (!ingsArray) {
+      showToast("Bitte füge mindestens eine Zutat hinzu!", "error");
+      return;
+    }
+
     const data = new FormData(document.getElementById('editRecipeForm'));
 
     // the ids in HTML map to diff names than backend expects:
@@ -891,8 +972,8 @@ const app = {
     fd.append('schwierigkeit', document.getElementById('eDiff').value);
     fd.append('kategorie', document.getElementById('eCat').value);
     fd.append('tags', document.getElementById('eTagsArray').value);
-    fd.append('zutaten', document.getElementById('eIng').value);
-    fd.append('zubereitung', document.getElementById('eSteps').value);
+    fd.append('zutaten', ingsArray); // Using the hidden array string (separated by |||)
+    fd.append('zubereitung', stepsText);
     fd.append('remove_image', document.getElementById('editRecipeRemoveImage').value);
 
     const file = document.getElementById('editRecipeImageInput').files[0];
@@ -1225,8 +1306,17 @@ const app = {
 
     // Add ingredients as the very first step "Zutaten bereitstellen"
     if (r.zutaten) {
-      const cleanIng = r.zutaten.replace(/[#*_-]/g, '').trim();
-      this.zenSteps.unshift(`Zutaten bereitstellen:\n<br><span style="font-size: 0.6em; color: var(--text-muted);">${cleanIng.replace(/\n/g, '<br>')}</span>`);
+      let ingArray = [];
+      if (r.zutaten.includes('|||')) {
+        ingArray = r.zutaten.split('|||').map(s => s.trim()).filter(s => s);
+      } else {
+        ingArray = r.zutaten.split(/\r?\n/).map(s => s.replace(/[#*_-]/g, '').trim()).filter(s => s);
+      }
+
+      if (ingArray.length > 0) {
+        const nicelyFormatted = ingArray.map(i => `&bull; ${i}`).join('<br>');
+        this.zenSteps.unshift(`Zutaten bereitstellen:\n<br><div style="font-size: 0.5em; line-height: 1.4; color: var(--text-muted); margin-top:1rem; text-align:left; display:inline-block;">${nicelyFormatted}</div>`);
+      }
     }
 
     this.zenStepIndex = 0;

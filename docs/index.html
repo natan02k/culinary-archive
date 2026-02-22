@@ -245,22 +245,17 @@
             </div>
             <input type="hidden" id="rTagsArray" name="tags" value="">
           </div>
-          <div class="form-group markdown-editor-group">
-            <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
-              <span>Zutaten <svg title="Markdown Supported" width="30" height="18" viewBox="0 0 208 128"
-                  fill="var(--text-muted)" style="vertical-align: middle; margin-left: 5px;">
-                  <path d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39zm125 0l-30-33h20V30h20v35h20z" />
-                </svg></span>
-              <span style="font-size: 0.8rem; color: var(--text-muted);">Editor | Live Preview</span>
-            </label>
-            <div style="display: flex; gap: 1rem; height: 150px;">
-              <textarea id="rIng" class="form-control"
-                style="flex: 1; resize: none; overflow-y: auto; font-family: monospace;"
-                placeholder="- 500g Mehl&#10;- 2 Eier" oninput="app.updateLivePreview('rIng', 'rIngPreview')"
-                required></textarea>
-              <div id="rIngPreview" class="markdown-body form-control"
-                style="flex: 1; background: var(--surface); overflow-y: auto;">*Live Preview...*</div>
+          <div class="form-group">
+            <label>Zutaten</label>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;" id="rIngContainer"></div>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" id="rIngInput" class="form-control"
+                placeholder="Zutat eingeben (z.B. 500g Mehl) und Enter drücken"
+                onkeypress="if(event.key === 'Enter') { event.preventDefault(); app.addIngredient('rIngInput', 'rIngContainer', 'rIngArray'); }">
+              <button type="button" class="btn-glass"
+                onclick="app.addIngredient('rIngInput', 'rIngContainer', 'rIngArray')">Hinzufügen</button>
             </div>
+            <input type="hidden" id="rIngArray" name="zutaten" value="">
           </div>
           <div class="form-group markdown-editor-group">
             <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
@@ -457,18 +452,17 @@
             </div>
             <input type="hidden" id="eTagsArray" name="tags" value="">
           </div>
-          <div class="form-group markdown-editor-group">
-            <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
-              <span>Zutaten</span>
-              <span style="font-size: 0.8rem; color: var(--text-muted);">Editor | Live Preview</span>
-            </label>
-            <div style="display: flex; gap: 1rem; height: 150px;">
-              <textarea id="eIng" class="form-control"
-                style="flex: 1; resize: none; overflow-y: auto; font-family: monospace;"
-                oninput="app.updateLivePreview('eIng', 'eIngPreview')" required></textarea>
-              <div id="eIngPreview" class="markdown-body form-control"
-                style="flex: 1; background: var(--surface); overflow-y: auto;">*Live Preview...*</div>
+          <div class="form-group">
+            <label>Zutaten</label>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;" id="eIngContainer"></div>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" id="eIngInput" class="form-control"
+                placeholder="Zutat eingeben (z.B. 500g Mehl) und Enter drücken"
+                onkeypress="if(event.key === 'Enter') { event.preventDefault(); app.addIngredient('eIngInput', 'eIngContainer', 'eIngArray'); }">
+              <button type="button" class="btn-glass"
+                onclick="app.addIngredient('eIngInput', 'eIngContainer', 'eIngArray')">Hinzufügen</button>
             </div>
+            <input type="hidden" id="eIngArray" name="zutaten" value="">
           </div>
           <div class="form-group markdown-editor-group">
             <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
@@ -588,7 +582,7 @@
   </div>
 
   <div id="toast-container"></div>
-  <script src="js/app.js?v=7"></script>
+  <script src="js/app.js?v=8"></script>
 </body>
 
 </html>
