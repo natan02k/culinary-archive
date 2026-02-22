@@ -159,6 +159,69 @@ const app = {
     initHeroParticles();
     initTypewriter();
     this.initDailyQuests();
+    this.initWheels();
+  },
+
+  initWheels() {
+    const wheels = ['rPrep', 'rCook', 'ePrep', 'eCook'];
+
+    let html = '';
+    for (let i = 0; i <= 240; i += 5) {
+      html += `<div class="wheel-item" data-val="${i}">${i} Min</div>`;
+    }
+
+    wheels.forEach(id => {
+      const wrapper = document.getElementById(id + 'Picker');
+      if (wrapper) {
+        wrapper.innerHTML = html;
+        wrapper.addEventListener('scroll', () => {
+          this.updateWheel(id);
+        });
+        wrapper.addEventListener('click', (e) => {
+          if (e.target.classList.contains('wheel-item')) {
+            const val = parseInt(e.target.getAttribute('data-val'));
+            this.setWheelValue(id, val);
+          }
+        });
+
+        setTimeout(() => {
+          const hidden = document.getElementById(id);
+          if (hidden && hidden.value) {
+            this.setWheelValue(id, parseInt(hidden.value));
+          } else {
+            this.updateWheel(id);
+          }
+        }, 100);
+      }
+    });
+  },
+
+  updateWheel(id) {
+    const wrapper = document.getElementById(id + 'Picker');
+    if (!wrapper) return;
+    const hidden = document.getElementById(id);
+    const items = wrapper.querySelectorAll('.wheel-item');
+    const itemHeight = 48;
+
+    let index = Math.round(wrapper.scrollTop / itemHeight);
+    if (index < 0) index = 0;
+    if (index >= items.length) index = items.length - 1;
+
+    items.forEach(el => el.className = 'wheel-item');
+    if (items[index]) {
+      items[index].classList.add('active');
+      if (hidden) hidden.value = items[index].getAttribute('data-val');
+    }
+    if (items[index - 1]) items[index - 1].classList.add('near-top');
+    if (items[index + 1]) items[index + 1].classList.add('near-bottom');
+  },
+
+  setWheelValue(id, val) {
+    const wrapper = document.getElementById(id + 'Picker');
+    if (!wrapper) return;
+    const index = Math.floor(val / 5);
+    wrapper.scrollTo({ top: index * 48, behavior: 'smooth' });
+    setTimeout(() => this.updateWheel(id), 50);
   },
 
   toggleAuthMode() {
@@ -915,13 +978,8 @@ const app = {
     document.getElementById('editRezeptId').value = r.rezept_id;
     document.getElementById('eTitle').value = r.titel;
 
-    const prepInput = document.getElementById('ePrep');
-    prepInput.value = r.zubereitungszeit || 0;
-    document.getElementById('ePrepVal').textContent = prepInput.value + ' Min';
-
-    const cookInput = document.getElementById('eCook');
-    cookInput.value = r.kochzeit || 0;
-    document.getElementById('eCookVal').textContent = cookInput.value + ' Min';
+    this.setWheelValue('ePrep', r.zubereitungszeit || 0);
+    this.setWheelValue('eCook', r.kochzeit || 0);
 
     document.getElementById('eDiff').value = r.schwierigkeit;
     document.getElementById('eCat').value = r.kategorie;

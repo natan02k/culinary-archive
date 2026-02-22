@@ -217,7 +217,9 @@ public class MainVerticle extends AbstractVerticle {
 
     router.get("/api/all-recipes").handler(ctx -> {
       String username = getUsernameFromToken(ctx);
-      client.query("SELECT r.user_id, n.username as autor, r.titel, r.zubereitungszeit, r.kochzeit, r.schwierigkeit, r.zutaten, r.zubereitung, r.rezept_id, r.kategorie, r.tags, r.image_url " +
+      client.query("SELECT r.user_id, n.username as autor, r.titel, r.zubereitungszeit, r.kochzeit, r.schwierigkeit, r.zutaten, r.zubereitung, r.rezept_id, r.kategorie, r.tags, r.image_url, " +
+          "(SELECT COUNT(*) FROM rezept_likes rl WHERE rl.rezept_id = r.rezept_id AND rl.liked = 1) as likes, " +
+          "(SELECT COUNT(*) FROM favoriten fv WHERE fv.rezept_id = r.rezept_id) as favorites_count " +
           "FROM rezept r JOIN nutzer n ON r.user_id = n.user_id ORDER BY r.rezept_id DESC")
         .execute()
         .onComplete(res -> {
@@ -237,6 +239,8 @@ public class MainVerticle extends AbstractVerticle {
                 .put("kategorie", row.getString("kategorie"))
                 .put("tags", row.getString("tags") != null ? row.getString("tags") : "")
                 .put("image_url", row.getString("image_url"))
+                .put("likes", row.getInteger("likes") != null ? row.getInteger("likes") : 0)
+                .put("favorites_count", row.getInteger("favorites_count") != null ? row.getInteger("favorites_count") : 0)
                 .put("is_favorite", false)
                 .put("is_liked", false)
               );
