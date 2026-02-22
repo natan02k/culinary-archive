@@ -572,6 +572,17 @@ const app = {
       const sortedByFavs = [...recipes].sort((a, b) => (b.favorites_count || 0) - (a.favorites_count || 0));
       const topFav = sortedByFavs[0];
 
+      // Assign dynamic badges
+      top3Likes.forEach((r, idx) => {
+        if (idx === 0) r.highlightBadge = '🏆 Platz 1 (Likes)';
+        if (idx === 1) r.highlightBadge = '🥈 Platz 2 (Likes)';
+        if (idx === 2) r.highlightBadge = '🥉 Platz 3 (Likes)';
+      });
+      if (topFav) {
+        if (!topFav.highlightBadge) topFav.highlightBadge = '⭐ Meiste Favoriten';
+        else topFav.highlightBadge = '🏆 Platz 1 & Favorit';
+      }
+
       const hc = document.getElementById('highlightsContainer');
       const hs = document.getElementById('highlightsSection');
       if (hc && hs) {
@@ -1214,7 +1225,7 @@ const app = {
 
     return `
       <div class="recipe-card reveal">
-        ${isTrending ? '<div class="trending-badge">🔥 Trending</div>' : ''}
+        ${r.highlightBadge ? `<div class="trending-badge">${r.highlightBadge}</div>` : (isTrending ? '<div class="trending-badge">🔥 Top Rezept</div>' : '')}
         <div class="recipe-image-wrap">
           <img src="${imgUrl}" alt="${r.titel}" class="recipe-image" loading="lazy" onclick="app.viewRecipe(${r.rezept_id})" style="cursor:pointer;">
         </div>
