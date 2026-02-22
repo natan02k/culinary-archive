@@ -565,10 +565,27 @@ const app = {
       const recipes = await this.req('/all-recipes');
       this.loadedRecipes = recipes;
 
-      // Determine trending top-3 by likes
-      const sorted = [...recipes].sort((a, b) => (b.likes || 0) - (a.likes || 0));
-      const trendingIds = new Set(sorted.slice(0, 3).map(r => r.rezept_id));
-      this._trendingIds = trendingIds;
+      // Determine trending top-3 by likes + top 1 by favorites
+      const sortedByLikes = [...recipes].sort((a, b) => (b.likes || 0) - (a.likes || 0));
+      const top3Likes = sortedByLikes.slice(0, 3);
+
+      const sortedByFavs = [...recipes].sort((a, b) => (b.favorites_count || 0) - (a.favorites_count || 0));
+      const topFav = sortedByFavs[0];
+
+      const hc = document.getElementById('highlightsContainer');
+      const hs = document.getElementById('highlightsSection');
+      if (hc && hs) {
+        const highlightSet = new Set([...top3Likes, topFav].filter(Boolean));
+        const highlightRecipes = Array.from(highlightSet);
+        if (highlightRecipes.length > 0) {
+          hc.innerHTML = highlightRecipes.map(r => this.createRecipeCard(r)).join('');
+          hs.style.display = 'block';
+        } else {
+          hs.style.display = 'none';
+        }
+      }
+
+      this._trendingIds = new Set(top3Likes.map(r => r.rezept_id));
 
       this.triggerSearch();
 
@@ -756,7 +773,7 @@ const app = {
     if (!r) return;
 
     document.getElementById('viewTitle').textContent = r.titel;
-    document.getElementById('viewAuthor').textContent = r.autor;
+    document.getElementById('viewAuthor').innerHTML = `<span onclick="app.openPublicProfile('${r.autor}'); closeModal('viewRecipeModal');" style="cursor: pointer; color: var(--primary); font-weight: bold; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">@${r.autor}</span>`;
     document.getElementById('viewCat').textContent = r.kategorie;
     document.getElementById('viewTime').textContent = r.zubereitungszeit + r.kochzeit;
     document.getElementById('viewDiff').textContent = r.schwierigkeit;
@@ -1092,6 +1109,8 @@ const app = {
         this.showFloatingXP(rect.left + rect.width / 2, rect.top, 5);
         this.checkQuest('like');
         this.checkAuth();
+      } else {
+        this.checkQuest('like', true); // undo quest progress
       }
     } catch (e) {
       showToast("Fehler beim Liken.", 'error');
@@ -1122,6 +1141,7 @@ const app = {
       btn.classList.remove('liked');
       icon.setAttribute('fill', 'none');
       if (counterEl) counterEl.textContent = Math.max(0, count - 1);
+      this.checkQuest('favorite', true); // undo quest progress
     } else {
       btn.classList.add('liked');
       icon.setAttribute('fill', 'currentColor');
@@ -1294,10 +1314,24 @@ const app = {
     this.renderDailyQuests();
   },
 
-  checkQuest(type) {
+  checkQuest(type, isUndo = false) {
     if (!this.quests) return;
     const maxVals = { like: 3, favorite: 2, recipe: 1 };
     const xpRewards = { like: 15, favorite: 10, recipe: 50 };
+
+    // Anti-Cheat: If completed, it stays completed
+    if (this.quests[type] >= maxVals[type]) return;
+
+    if (isUndo) {
+      // Reduce progress if unliked before completion
+      if (this.quests[type] > 0) {
+        this.quests[type]--;
+        localStorage.setItem('culinaryQuests', JSON.stringify(this.quests));
+        this.renderDailyQuests();
+      }
+      return;
+    }
+
     if (this.quests[type] < maxVals[type]) {
       this.quests[type]++;
       localStorage.setItem('culinaryQuests', JSON.stringify(this.quests));
