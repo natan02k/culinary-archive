@@ -25,13 +25,12 @@
               onclick="document.getElementById('feed').scrollIntoView({behavior: 'smooth'})">Entdecken</button>
             <button class="btn-glass" onclick="openModal('authModal')">Login</button>
           </div>
-          <div id="userMenu" style="display: none; align-items: center; gap: 1rem;">
-            <div class="level-badge" id="navLevelBadge" title="Dein aktuelles Level!"
-              style="width: 40px; height: 40px; font-size: 1.2rem;">1</div>
+          <div id="userMenu" style="display: none; align-items: center; gap: 0.5rem;">
             <button class="btn-primary"
               onclick="document.getElementById('feed').scrollIntoView({behavior: 'smooth'})">Entdecken</button>
-            <button class="nav-link" style="background:none;" onclick="app.showProfile()">Profil & Rezepte</button>
-            <button class="nav-link" style="background:none; color: var(--text-muted);"
+            <button class="nav-link" style="background:none; padding: 0.5rem;"
+              onclick="app.showProfile()">Profil</button>
+            <button class="nav-link" style="background:none; color: var(--text-muted); padding: 0.5rem;"
               onclick="app.logout()">Logout</button>
           </div>
           <button id="themeToggle" class="theme-toggle" style="margin-left: 1rem;">🌙</button>

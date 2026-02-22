@@ -356,7 +356,7 @@ const app = {
   },
 
   updateGamificationUI({ xp, level, profile_image_url, username }) {
-    document.getElementById('navLevelBadge').textContent = level;
+    if (document.getElementById('navLevelBadge')) document.getElementById('navLevelBadge').textContent = level;
     document.getElementById('dashLevelBadge').textContent = level;
     document.getElementById('dashRankTitle').textContent = this.getRankTitle(level);
 
