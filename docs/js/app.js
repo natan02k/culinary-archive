@@ -53,6 +53,100 @@ function fireConfetti() {
   });
 }
 
+// ─── TOAST NOTIFICATION SYSTEM ───────────────────────────────────────────────
+const TOAST_ICONS = { success: '✅', error: '❌', info: 'ℹ️' };
+function showToast(message, type = 'info', duration = 3500) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<span>${TOAST_ICONS[type] || 'ℹ️'}</span><span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('toast-out');
+    toast.addEventListener('animationend', () => toast.remove(), { once: true });
+  }, duration);
+}
+
+// ─── HERO FOOD PARTICLES ──────────────────────────────────────────────────────
+const FOOD_EMOJIS = ['🍕', '🍜', '🥗', '🍰', '🍣', '🥐', '🍔', '🥑', '🍓', '🫐', '🥘', '🌮'];
+function initHeroParticles() {
+  const canvas = document.getElementById('heroParticles');
+  if (!canvas) return;
+  const hero = canvas.parentElement;
+  let W = hero.offsetWidth, H = hero.offsetHeight;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const PARTICLE_COUNT = 14;
+  const particles = Array.from({ length: PARTICLE_COUNT }, () => createParticle(W, H, true));
+
+  function createParticle(w, h, initial) {
+    return {
+      x: Math.random() * w,
+      y: initial ? Math.random() * h : h + 30,
+      size: 14 + Math.random() * 14,
+      speed: 0.3 + Math.random() * 0.5,
+      drift: (Math.random() - 0.5) * 0.4,
+      opacity: 0.4 + Math.random() * 0.45,
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - 0.5) * 0.015,
+      emoji: FOOD_EMOJIS[Math.floor(Math.random() * FOOD_EMOJIS.length)]
+    };
+  }
+
+  let raf;
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => {
+      ctx.save();
+      ctx.globalAlpha = p.opacity;
+      ctx.font = `${p.size}px serif`;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.fillText(p.emoji, -p.size / 2, p.size / 2);
+      ctx.restore();
+      p.y -= p.speed;
+      p.x += p.drift;
+      p.rotation += p.rotationSpeed;
+      if (p.y < -40) Object.assign(p, createParticle(W, H, false), { x: Math.random() * W });
+    });
+    raf = requestAnimationFrame(draw);
+  }
+  draw();
+
+  // Pause when out of view for performance
+  const io = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) { if (!raf) draw(); }
+    else { cancelAnimationFrame(raf); raf = null; }
+  }, { threshold: 0 });
+  io.observe(canvas);
+
+  const resizeOb = new ResizeObserver(() => {
+    W = hero.offsetWidth; H = hero.offsetHeight;
+    canvas.width = W; canvas.height = H;
+  });
+  resizeOb.observe(hero);
+}
+
+// ─── TYPEWRITER HERO PARAGRAPH ───────────────────────────────────────────────
+function initTypewriter() {
+  const el = document.querySelector('.hero-content p');
+  if (!el || el.dataset.typed) return;
+  el.dataset.typed = '1';
+  const text = el.textContent.trim();
+  el.textContent = '';
+  el.style.opacity = '1';
+  let i = 0;
+  const speed = 18;
+  function type() {
+    if (i < text.length) {
+      el.textContent += text[i++];
+      setTimeout(type, speed);
+    }
+  }
+  setTimeout(type, 600);
+}
+
 const app = {
   isRegistering: false,
   user: null,
@@ -62,6 +156,8 @@ const app = {
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     this.checkAuth();
     this.loadRecipes();
+    initHeroParticles();
+    initTypewriter();
   },
 
   toggleAuthMode() {
@@ -84,13 +180,13 @@ const app = {
 
   async req(endpoint, method = 'GET', body = null) {
     const opts = { method, headers: {} };
-    
+
     // Add JWT token to headers if available
     const token = localStorage.getItem('jwt_token');
     if (token) {
       opts.headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     if (body) {
       if (body instanceof FormData) {
         opts.body = body; // let browser set content-type for multipart
@@ -99,7 +195,7 @@ const app = {
         opts.body = JSON.stringify(body);
       }
     }
-    
+
     // Remove credentials for JWT - we don't send cookies
     const res = await fetch(`${API_BASE}${endpoint}`, opts);
     let data = null;
@@ -122,20 +218,17 @@ const app = {
       if (this.isRegistering) {
         await this.req('/register', 'POST', { username, password, email, geburtsdatum: date, bio: "Let's cook!" });
         fireConfetti();
-        alert('Account erstellt! Willkommen bei EpicRecipes.');
+        showToast('Account erstellt! Willkommen bei Culinary Archive. 🎉', 'success');
       } else {
         const response = await this.req('/login', 'POST', { username, password });
-        
-        // Save JWT token to localStorage
         if (response.token) {
           localStorage.setItem('jwt_token', response.token);
         }
-        
         closeModal('authModal');
         this.checkAuth();
       }
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, 'error');
     } finally {
       btnText.innerText = ogText;
     }
@@ -262,10 +355,10 @@ const app = {
 
   async logout() {
     await this.req('/logout', 'POST');
-    
+
     // Remove JWT token from localStorage
     localStorage.removeItem('jwt_token');
-    
+
     this.checkAuth();
   },
 
@@ -328,12 +421,28 @@ const app = {
   },
 
   async loadRecipes() {
+    // Show shimmer skeletons immediately
+    const container = document.getElementById('recipesContainer');
+    const SKELETON_COUNT = 6;
+    container.innerHTML = Array(SKELETON_COUNT).fill(`
+      <div class="skeleton-card">
+        <div class="skeleton-img"></div>
+        <div class="skeleton-content">
+          <div class="skeleton-line wide"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+      </div>`).join('');
+
     try {
       const recipes = await this.req('/all-recipes');
-      this.loadedRecipes = recipes; // Store for the modal view
+      this.loadedRecipes = recipes;
 
-      const container = document.getElementById('recipesContainer');
-      // Trigger search will handle populating the feed based on current filter values
+      // Determine trending top-3 by likes
+      const sorted = [...recipes].sort((a, b) => (b.likes || 0) - (a.likes || 0));
+      const trendingIds = new Set(sorted.slice(0, 3).map(r => r.rezept_id));
+      this._trendingIds = trendingIds;
+
       this.triggerSearch();
 
       // Also update Profile if logged in
@@ -346,20 +455,46 @@ const app = {
       }
 
       // Apply observers to new loaded content
-      document.querySelectorAll('.recipe-grid .recipe-card').forEach(el => observer.observe(el));
+      this._applyCardEffects();
     } catch (e) {
+      container.innerHTML = '<p style="color:var(--text-muted); grid-column:1/-1; text-align:center; padding: 3rem;">Rezepte konnten nicht geladen werden. 😢</p>';
       console.error(e);
     }
+  },
+
+  // ─── APPLY 3D TILT + STAGGER ───────────────────────────────────────────────
+  _applyCardEffects() {
+    const cards = document.querySelectorAll('.recipe-card');
+    cards.forEach((card, i) => {
+      observer.observe(card);
+
+      // Stagger delay
+      card.style.transitionDelay = `${i * 60}ms`;
+
+      // 3D Tilt (disabled on touch devices)
+      if (!window.matchMedia('(hover: none)').matches) {
+        card.addEventListener('mousemove', e => {
+          const rect = card.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const dx = (e.clientX - cx) / (rect.width / 2);
+          const dy = (e.clientY - cy) / (rect.height / 2);
+          card.style.transform = `translateY(-8px) scale(1.015) perspective(700px) rotateY(${dx * 5}deg) rotateX(${-dy * 5}deg)`;
+        });
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = '';
+        });
+      }
+    });
   },
 
   triggerSearch() {
     const query = document.getElementById('searchInput').value.toLowerCase().trim();
     const category = document.getElementById('searchCategory').value;
 
-    // Clear ghost suggestion if query becomes empty or changes significantly
     if (!query) document.getElementById('searchInputGhost').value = '';
 
-    const cleanQuery = query.replace(/^#/, ''); // Remove # if they typed it
+    const cleanQuery = query.replace(/^#/, '');
     const filtered = this.loadedRecipes.filter(r => {
       const matchesQuery = !query ||
         r.titel.toLowerCase().includes(query) ||
@@ -376,8 +511,7 @@ const app = {
       container.innerHTML = '<p style="color:var(--text-muted); grid-column:1/-1; text-align:center; padding: 3rem;">Keine Rezepte gefunden. 😢</p>';
     } else {
       container.innerHTML = filtered.map(r => this.createRecipeCard(r)).join('');
-      // Re-apply observers to new loaded content
-      document.querySelectorAll('#recipesContainer .recipe-card').forEach(el => observer.observe(el));
+      this._applyCardEffects();
     }
   },
 
@@ -618,9 +752,10 @@ const app = {
     try {
       await this.req('/profile', 'DELETE');
       closeModal('editProfileModal');
-      this.checkAuth(); // this will log them out and refresh UX
+      showToast('Account gelöscht. Auf Wiedersehen! 👋', 'info');
+      this.checkAuth();
     } catch (err) {
-      alert("Fehler beim Löschen des Accounts");
+      showToast("Fehler beim Löschen des Accounts", 'error');
     }
   },
 
@@ -760,28 +895,31 @@ const app = {
   async toggleLike(id, btn) {
     if (!this.user) return openModal('authModal');
 
-    // Optimistic UI update
     const isLiked = btn.classList.contains('liked');
     const icon = btn.querySelector('svg');
+    const counterEl = btn.closest('.like-btn-group')?.querySelector('.like-counter');
+    let count = parseInt(counterEl?.textContent || '0', 10);
+
+    // Optimistic UI update
     if (isLiked) {
       btn.classList.remove('liked');
       icon.setAttribute('fill', 'none');
+      if (counterEl) counterEl.textContent = Math.max(0, count - 1);
     } else {
       btn.classList.add('liked');
       icon.setAttribute('fill', 'currentColor');
+      if (counterEl) counterEl.textContent = count + 1;
     }
 
     // Server update
     try {
       await this.req('/toggle-like', 'POST', { rezept_id: id, action: isLiked ? 0 : 1 });
       if (!isLiked) {
-        // If they just liked it, a little spark
         confetti({ particleCount: 30, spread: 50, origin: { x: btn.getBoundingClientRect().x / window.innerWidth, y: btn.getBoundingClientRect().y / window.innerHeight } });
-        this.checkAuth(); // their local level might not change immediately unless it was their own recipe, but let's refresh just in case
+        this.checkAuth();
       }
     } catch (e) {
-      // Revert if error
-      alert("Fehler beim Likes");
+      showToast("Fehler beim Liken.", 'error');
       this.loadRecipes();
     }
   },
@@ -791,12 +929,9 @@ const app = {
     try {
       const favs = await this.req('/favorites');
       const container = document.getElementById('favoritesContainer');
-      // Tag them so the heart/star icon renders correctly as liked
       const mapped = favs.map(r => { r.is_favorite = true; return r; });
       container.innerHTML = mapped.length > 0 ? mapped.map(r => this.createRecipeCard(r)).join('') : '<p style="color:var(--text-muted); grid-column:1/-1;">Du hast noch keine Favoriten.</p>';
-
-      // Apply observers to new loaded content
-      document.querySelectorAll('#favoritesContainer .recipe-card').forEach(el => observer.observe(el));
+      this._applyCardEffects();
     } catch (e) { }
   },
 
@@ -804,15 +939,18 @@ const app = {
     if (!this.user) return openModal('authModal');
     const isFav = btn.classList.contains('liked');
     const icon = btn.querySelector('svg');
+    const counterEl = btn.closest('.like-btn-group')?.querySelector('.like-counter');
+    let count = parseInt(counterEl?.textContent || '0', 10);
 
     // Optimistic UI
     if (isFav) {
       btn.classList.remove('liked');
       icon.setAttribute('fill', 'none');
+      if (counterEl) counterEl.textContent = Math.max(0, count - 1);
     } else {
       btn.classList.add('liked');
       icon.setAttribute('fill', 'currentColor');
-      // Little star explosion
+      if (counterEl) counterEl.textContent = count + 1;
       confetti({ particleCount: 20, spread: 70, shapes: ['star'], colors: ['#f59e0b', '#fbbf24'], origin: { x: btn.getBoundingClientRect().x / window.innerWidth, y: btn.getBoundingClientRect().y / window.innerHeight } });
     }
 
@@ -822,9 +960,9 @@ const app = {
       } else {
         await this.req('/favorites', 'POST', { rezept_id: id });
       }
-      this.loadFavorites(); // Refresh list silently
+      this.loadFavorites();
     } catch (e) {
-      alert("Fehler beim Favorisieren.");
+      showToast("Fehler beim Favorisieren.", 'error');
     }
   },
 
@@ -872,10 +1010,16 @@ const app = {
   createRecipeCard(r) {
     const fallbackUrl = 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
     const imgUrl = r.image_url ? `${HOST}/${r.image_url}` : fallbackUrl;
+    const isTrending = this._trendingIds && this._trendingIds.has(r.rezept_id);
+    const likeCount = r.likes || 0;
+    const favCount = r.favorites_count || 0;
 
     return `
       <div class="recipe-card reveal">
-        <img src="${imgUrl}" alt="${r.titel}" class="recipe-image" loading="lazy" onclick="app.viewRecipe(${r.rezept_id})" style="cursor:pointer;">
+        ${isTrending ? '<div class="trending-badge">🔥 Trending</div>' : ''}
+        <div class="recipe-image-wrap">
+          <img src="${imgUrl}" alt="${r.titel}" class="recipe-image" loading="lazy" onclick="app.viewRecipe(${r.rezept_id})" style="cursor:pointer;">
+        </div>
         <div class="recipe-content">
           <div class="recipe-meta">
              <span class="recipe-author" onclick="event.stopPropagation(); app.openPublicProfile('${r.autor}')" style="cursor:pointer; font-weight:bold; color:var(--primary); transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">@${r.autor}</span>
@@ -900,13 +1044,19 @@ const app = {
           </div>
           <div style="flex:1"></div>
           
-          <button class="like-btn ${r.is_favorite ? 'liked' : ''}" onclick="event.stopPropagation(); app.toggleFavorite(${r.rezept_id}, this)" title="Zu Favoriten hinzufügen" style="margin-right:0.5rem;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="${r.is_favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          </button>
+          <span class="like-btn-group" onclick="event.stopPropagation();">
+            <button class="like-btn ${r.is_favorite ? 'liked' : ''}" onclick="app.toggleFavorite(${r.rezept_id}, this)" title="Zu Favoriten hinzufügen">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="${r.is_favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </button>
+            <span class="like-counter">${favCount > 0 ? favCount : ''}</span>
+          </span>
           
-          <button class="like-btn ${r.is_liked ? 'liked' : ''}" onclick="event.stopPropagation(); app.toggleLike(${r.rezept_id}, this)" title="Liken für XP!">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="${r.is_liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-heart"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          </button>
+          <span class="like-btn-group" onclick="event.stopPropagation();" style="margin-left:0.25rem;">
+            <button class="like-btn ${r.is_liked ? 'liked' : ''}" onclick="app.toggleLike(${r.rezept_id}, this)" title="Liken für XP!">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="${r.is_liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </button>
+            <span class="like-counter">${likeCount > 0 ? likeCount : ''}</span>
+          </span>
         </div>
         </div>
       </div>
