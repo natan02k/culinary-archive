@@ -1178,15 +1178,31 @@ const app = {
     const likeObj = this.quests.like >= 3;
     const favObj = this.quests.favorite >= 2;
 
+    // Calculation for progress bars
+    const likeProgress = Math.min((this.quests.like / 3) * 100, 100);
+    const favProgress = Math.min((this.quests.favorite / 2) * 100, 100);
+
     qWidget.innerHTML = `
       <h4>📜 Tägliche Quests</h4>
+      
       <div class="quest-item ${likeObj ? 'completed' : ''}">
-        <span>Entdecker: Like 3 Rezepte (${Math.min(this.quests.like, 3)}/3)</span>
-        <span class="quest-reward">+15 XP</span>
+        <div class="quest-header">
+          <span class="quest-title">🔥 Entdecker: Like 3 Rezepte (${Math.min(this.quests.like, 3)}/3)</span>
+          <span class="quest-reward">+15 XP</span>
+        </div>
+        <div class="quest-progress-wrap">
+          <div class="quest-progress-fill" style="width: ${likeProgress}%"></div>
+        </div>
       </div>
+
       <div class="quest-item ${favObj ? 'completed' : ''}">
-        <span>Sammler: Speichere 2 Favoriten (${Math.min(this.quests.favorite, 2)}/2)</span>
-        <span class="quest-reward">+10 XP</span>
+        <div class="quest-header">
+          <span class="quest-title">⭐ Sammler: Speichere 2 Favoriten (${Math.min(this.quests.favorite, 2)}/2)</span>
+          <span class="quest-reward">+10 XP</span>
+        </div>
+        <div class="quest-progress-wrap">
+          <div class="quest-progress-fill" style="width: ${favProgress}%"></div>
+        </div>
       </div>
     `;
   },
