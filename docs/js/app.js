@@ -158,6 +158,7 @@ const app = {
     this.loadRecipes();
     initHeroParticles();
     initTypewriter();
+    this.initDailyQuests();
   },
 
   toggleAuthMode() {
@@ -296,23 +297,35 @@ const app = {
     document.getElementById('dashLevelBadge').textContent = level;
     document.getElementById('dashRankTitle').textContent = this.getRankTitle(level);
 
+    // Epic Level Up Modal Check
+    if (this._prevLevel && level > this._prevLevel) {
+      this.showLevelUpModal(level);
+    }
+    this._prevLevel = level;
+
     // XP logic: Next level every 100 XP
     const currentLevelBaseXP = (level - 1) * 100;
     const progressXP = xp - currentLevelBaseXP;
     document.getElementById('dashXpLabel').textContent = `${progressXP} / 100 XP`;
     document.getElementById('dashXpBar').style.width = `${progressXP}%`;
 
-    // Profile Image
+    // Dynamic Avatar Ranks
+    const avatarClass = level >= 10 ? 'avatar-rank-god' : (level >= 5 ? 'avatar-rank-chef' : 'avatar-rank-novice');
+
+    // Profile Image Update
+    const dashImg = document.getElementById('dashProfileImage');
+    const dashInitials = document.getElementById('dashProfileInitials');
+    dashImg.className = `profile-image ${avatarClass}`;
+    dashInitials.className = `profile-initials ${avatarClass}`;
+
     if (profile_image_url) {
-      document.getElementById('dashProfileImage').src = HOST + '/' + profile_image_url;
-      document.getElementById('dashProfileImage').style.display = 'block';
-      document.getElementById('dashProfileInitials').style.display = 'none';
+      dashImg.src = HOST + '/' + profile_image_url;
+      dashImg.style.display = 'block';
+      dashInitials.style.display = 'none';
     } else {
-      document.getElementById('dashProfileImage').style.display = 'none';
-      document.getElementById('dashProfileInitials').style.display = 'flex';
-      if (username) {
-        document.getElementById('dashProfileInitials').textContent = username.charAt(0).toUpperCase();
-      }
+      dashImg.style.display = 'none';
+      dashInitials.style.display = 'flex';
+      if (username) dashInitials.textContent = username.charAt(0).toUpperCase();
     }
   },
 
@@ -683,6 +696,19 @@ const app = {
       titleContainer.appendChild(editBtn);
     }
 
+    // Add Zen Mode Button
+    let existingZenBtn = document.getElementById('zenModeBtn');
+    if (existingZenBtn) existingZenBtn.remove();
+    const zenBtn = document.createElement('button');
+    zenBtn.id = 'zenModeBtn';
+    zenBtn.className = 'btn-primary';
+    zenBtn.style.width = '100%';
+    zenBtn.style.marginTop = '1.5rem';
+    zenBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+    zenBtn.innerHTML = '🧘 Zen Koch-Modus Starten';
+    zenBtn.onclick = () => this.openZenMode(id);
+    document.getElementById('viewSteps').parentElement.appendChild(zenBtn);
+
     openModal('viewRecipeModal');
   },
 
@@ -916,6 +942,9 @@ const app = {
       await this.req('/toggle-like', 'POST', { rezept_id: id, action: isLiked ? 0 : 1 });
       if (!isLiked) {
         confetti({ particleCount: 30, spread: 50, origin: { x: btn.getBoundingClientRect().x / window.innerWidth, y: btn.getBoundingClientRect().y / window.innerHeight } });
+        const rect = btn.getBoundingClientRect();
+        this.showFloatingXP(rect.left + rect.width / 2, rect.top, 5);
+        this.checkQuest('like');
         this.checkAuth();
       }
     } catch (e) {
@@ -952,6 +981,9 @@ const app = {
       icon.setAttribute('fill', 'currentColor');
       if (counterEl) counterEl.textContent = count + 1;
       confetti({ particleCount: 20, spread: 70, shapes: ['star'], colors: ['#f59e0b', '#fbbf24'], origin: { x: btn.getBoundingClientRect().x / window.innerWidth, y: btn.getBoundingClientRect().y / window.innerHeight } });
+      const rect = btn.getBoundingClientRect();
+      this.showFloatingXP(rect.left + rect.width / 2, rect.top, 5);
+      this.checkQuest('favorite');
     }
 
     try {
@@ -1061,6 +1093,243 @@ const app = {
         </div>
       </div>
     `;
+  },
+
+  // ─── GAMIFICATION 2.0 ────────────────────────────────────────────────────────
+  showFloatingXP(x, y, amount) {
+    const el = document.createElement('div');
+    el.className = 'floating-xp';
+    el.textContent = `+${amount} XP`;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+  },
+
+  showLevelUpModal(level) {
+    // Only show modal if the container exists (prevent crashes if not added to HTML yet)
+    let container = document.getElementById('levelUpModal');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'levelUpModal';
+      container.className = 'modal-overlay';
+      container.innerHTML = `
+        <div class="modal">
+          <div class="level-up-content">
+            <div class="level-up-icon">🏆</div>
+            <div class="level-up-title">LEVEL UP!</div>
+            <p style="color:var(--text); font-size:1.2rem; margin-bottom:1rem;">Du hast <strong style="color:var(--primary)">Level <span id="lvlUpNum"></span></strong> erreicht!</p>
+            <p style="color:var(--text-muted); margin-bottom: 2rem;">Wundervoll! Dein neuer Rang erwartet dich.</p>
+            <button class="btn-primary" onclick="closeModal('levelUpModal'); fireConfetti()">Ausgezeichnet</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(container);
+    }
+    document.getElementById('lvlUpNum').textContent = level;
+    openModal('levelUpModal');
+    fireConfetti();
+    setTimeout(fireConfetti, 500);
+  },
+
+  initDailyQuests() {
+    const today = new Date().toDateString();
+    const stored = JSON.parse(localStorage.getItem('culinaryQuests')) || {};
+    if (stored.date !== today) {
+      this.quests = {
+        date: today,
+        like: 0,
+        favorite: 0
+      };
+      localStorage.setItem('culinaryQuests', JSON.stringify(this.quests));
+    } else {
+      this.quests = stored;
+    }
+    this.renderDailyQuests();
+  },
+
+  checkQuest(type) {
+    if (!this.quests) return;
+    const maxVals = { like: 3, favorite: 2, recipe: 1 };
+    if (this.quests[type] < maxVals[type]) {
+      this.quests[type]++;
+      localStorage.setItem('culinaryQuests', JSON.stringify(this.quests));
+      this.renderDailyQuests();
+      if (this.quests[type] === maxVals[type]) {
+        showToast("Quest abgeschlossen! Bonus XP!", "success");
+        // Opt: trigger XP request
+      }
+    }
+  },
+
+  renderDailyQuests() {
+    if (!this.quests) return;
+    const container = document.getElementById('profileMain');
+    let qWidget = document.getElementById('dailyQuestsWidget');
+    if (!container) return;
+
+    if (!qWidget) {
+      qWidget = document.createElement('div');
+      qWidget.id = 'dailyQuestsWidget';
+      qWidget.className = 'daily-quests';
+      container.appendChild(qWidget);
+    }
+
+    const likeObj = this.quests.like >= 3;
+    const favObj = this.quests.favorite >= 2;
+
+    qWidget.innerHTML = `
+      <h4>📜 Tägliche Quests</h4>
+      <div class="quest-item ${likeObj ? 'completed' : ''}">
+        <span>Entdecker: Like 3 Rezepte (${Math.min(this.quests.like, 3)}/3)</span>
+        <span class="quest-reward">+15 XP</span>
+      </div>
+      <div class="quest-item ${favObj ? 'completed' : ''}">
+        <span>Sammler: Speichere 2 Favoriten (${Math.min(this.quests.favorite, 2)}/2)</span>
+        <span class="quest-reward">+10 XP</span>
+      </div>
+    `;
+  },
+
+  // ─── ZEN COOKING MODE ──────────────────────────────────────────────────────
+  openZenMode(recipeId) {
+    const r = this.loadedRecipes.find(x => x.rezept_id === recipeId);
+    if (!r || !r.zubereitung) return;
+
+    // Parse Markdown completely out and just get flat sentences or steps
+    // Split by newlines, hash tags, or list items. Keep it simple.
+    let rawText = r.zubereitung;
+    // Strip markdown formatting simple regex
+    rawText = rawText.replace(/[#*_-]/g, '').trim();
+    this.zenSteps = rawText.split(/\r?\n/).filter(s => s.trim().length > 5);
+
+    if (this.zenSteps.length === 0) {
+      this.zenSteps = [rawText]; // fallback
+    }
+
+    this.zenStepIndex = 0;
+    document.getElementById('zenOverlay').classList.add('active');
+
+    closeModal('viewRecipeModal');
+    this.requestWakeLock();
+    this.renderZenStep();
+
+    // Swipe support
+    this._touchStartX = 0;
+    const overlay = document.getElementById('zenOverlay');
+    overlay.ontouchstart = (e) => this._touchStartX = e.changedTouches[0].screenX;
+    overlay.ontouchend = (e) => {
+      const touchEndX = e.changedTouches[0].screenX;
+      if (this._touchStartX - touchEndX > 50) this.zenNext();
+      if (touchEndX - this._touchStartX > 50) this.zenPrev();
+    };
+  },
+
+  closeZenMode() {
+    document.getElementById('zenOverlay').classList.remove('active');
+    this.releaseWakeLock();
+    // clear any active timers
+    const activeTimers = document.querySelectorAll('.zen-timer.active');
+    activeTimers.forEach(el => el.classList.remove('active'));
+  },
+
+  zenNext() {
+    if (this.zenStepIndex < this.zenSteps.length - 1) {
+      this.zenStepIndex++;
+      this.renderZenStep();
+    } else {
+      this.closeZenMode();
+      showToast("Rezept abgeschlossen! Guten Appetit!", "success");
+      fireConfetti();
+    }
+  },
+
+  zenPrev() {
+    if (this.zenStepIndex > 0) {
+      this.zenStepIndex--;
+      this.renderZenStep();
+    }
+  },
+
+  renderZenStep() {
+    const textEl = document.getElementById('zenStepText');
+    const pBar = document.getElementById('zenProgress');
+
+    textEl.style.opacity = '0';
+    textEl.style.transform = 'translateY(20px)';
+
+    setTimeout(() => {
+      const stepText = this.zenSteps[this.zenStepIndex];
+      textEl.innerHTML = this.generateTimers(stepText);
+      textEl.style.opacity = '1';
+      textEl.style.transform = 'translateY(0)';
+
+      const pct = ((this.zenStepIndex) / (this.zenSteps.length - 1)) * 100 || 0;
+      pBar.style.width = pct + '%';
+
+      document.getElementById('zenPrevBtn').disabled = this.zenStepIndex === 0;
+      const nextBtn = document.getElementById('zenNextBtn');
+      if (this.zenStepIndex === this.zenSteps.length - 1) {
+        nextBtn.innerHTML = 'Fertig 🎉';
+      } else {
+        nextBtn.innerHTML = 'Weiter &rarr;';
+      }
+    }, 300);
+  },
+
+  generateTimers(text) {
+    // Regex matches "X Minuten", "X Min.", "X Min", "X m", "X Sekunden"
+    const regex = /(\d+)\s*(minuten?|min\.?|m|sekunden?|sek\.?|s\b)\b/gi;
+    return text.replace(regex, (match, num, unit) => {
+      let seconds = parseInt(num);
+      unit = unit.toLowerCase();
+      if (unit.startsWith('m')) seconds *= 60;
+      return `<span class="zen-timer" onclick="app.startZenTimer(this, ${seconds})">⏱️ ${match} Starten</span>`;
+    });
+  },
+
+  startZenTimer(btn, seconds) {
+    if (btn.dataset.running === 'true') return;
+    btn.dataset.running = 'true';
+    btn.classList.add('active');
+    let timeLeft = seconds;
+
+    const update = () => {
+      const m = Math.floor(timeLeft / 60);
+      const s = timeLeft % 60;
+      btn.innerHTML = `⏱️ ${m}:${s.toString().padStart(2, '0')}`;
+    };
+
+    update();
+    const iv = setInterval(() => {
+      timeLeft--;
+      update();
+      if (timeLeft <= 0) {
+        clearInterval(iv);
+        btn.classList.remove('active');
+        btn.innerHTML = `✔️ Fertig!`;
+        btn.dataset.running = 'false';
+        showToast("Ein Timer ist abgelaufen!", "info");
+        // Play notification sound if possible
+        try { const audio = new Audio('data:audio/mp3;base64,//OExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'); audio.play(); } catch (e) { }
+      }
+    }, 1000);
+  },
+
+  async requestWakeLock() {
+    if ('wakeLock' in navigator) {
+      try {
+        this.wakeLock = await navigator.wakeLock.request('screen');
+      } catch (err) {
+        console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
+      }
+    }
+  },
+
+  releaseWakeLock() {
+    if (this.wakeLock !== null) {
+      this.wakeLock.release().then(() => this.wakeLock = null);
+    }
   }
 };
 
