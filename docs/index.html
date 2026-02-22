@@ -116,6 +116,8 @@
             <option value="Dessert">Dessert</option>
             <option value="Snack">Snack</option>
             <option value="Getränk">Getränk</option>
+            <option value="Vegetarisch">Vegetarisch</option>
+            <option value="Vegan">Vegan</option>
             <option value="Sonstiges">Sonstiges</option>
           </select>
 
@@ -209,11 +211,24 @@
 
           <div class="form-group"><label>Titel</label><input type="text" id="rTitle" class="form-control" required>
           </div>
-          <div style="display: flex; gap: 1rem;">
-            <div class="form-group" style="flex:1"><label>Zubereitungszeit (Min)</label><input type="number" id="rPrep"
-                class="form-control" required></div>
-            <div class="form-group" style="flex:1"><label>Kochzeit (Min)</label><input type="number" id="rCook"
-                class="form-control" required></div>
+          <div style="display: flex; gap: 2rem;">
+            <div class="form-group" style="flex:1">
+              <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.8rem;">
+                <span>Zubereitungszeit</span>
+                <span id="rPrepVal" class="time-badge">15 Min</span>
+              </label>
+              <input type="range" id="rPrep" name="zubereitungszeit" min="0" max="240" step="5" value="15"
+                class="time-slider" oninput="document.getElementById('rPrepVal').textContent = this.value + ' Min'"
+                required>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.8rem;">
+                <span>Kochzeit</span>
+                <span id="rCookVal" class="time-badge">30 Min</span>
+              </label>
+              <input type="range" id="rCook" name="kochzeit" min="0" max="240" step="5" value="30" class="time-slider"
+                oninput="document.getElementById('rCookVal').textContent = this.value + ' Min'" required>
+            </div>
           </div>
           <div class="form-group">
             <label>Schwierigkeit</label>
@@ -229,7 +244,10 @@
               <option value="Frühstück">Frühstück</option>
               <option value="Hauptgericht" selected>Hauptgericht</option>
               <option value="Dessert">Dessert</option>
+              <option value="Snack">Snack</option>
+              <option value="Getränk">Getränk</option>
               <option value="Vegetarisch">Vegetarisch</option>
+              <option value="Vegan">Vegan</option>
               <option value="Sonstiges">Sonstiges</option>
             </select>
           </div>
@@ -416,11 +434,24 @@
 
           <div class="form-group"><label>Titel</label><input type="text" id="eTitle" class="form-control" required>
           </div>
-          <div style="display: flex; gap: 1rem;">
-            <div class="form-group" style="flex:1"><label>Zubereitungszeit (Min)</label><input type="number" id="ePrep"
-                class="form-control" required></div>
-            <div class="form-group" style="flex:1"><label>Kochzeit (Min)</label><input type="number" id="eCook"
-                class="form-control" required></div>
+          <div style="display: flex; gap: 2rem;">
+            <div class="form-group" style="flex:1">
+              <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.8rem;">
+                <span>Zubereitungszeit</span>
+                <span id="ePrepVal" class="time-badge">0 Min</span>
+              </label>
+              <input type="range" id="ePrep" name="zubereitungszeit" min="0" max="240" step="5" value="0"
+                class="time-slider" oninput="document.getElementById('ePrepVal').textContent = this.value + ' Min'"
+                required>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.8rem;">
+                <span>Kochzeit</span>
+                <span id="eCookVal" class="time-badge">0 Min</span>
+              </label>
+              <input type="range" id="eCook" name="kochzeit" min="0" max="240" step="5" value="0" class="time-slider"
+                oninput="document.getElementById('eCookVal').textContent = this.value + ' Min'" required>
+            </div>
           </div>
           <div class="form-group">
             <label>Schwierigkeit</label>
@@ -436,7 +467,10 @@
               <option value="Frühstück">Frühstück</option>
               <option value="Hauptgericht">Hauptgericht</option>
               <option value="Dessert">Dessert</option>
+              <option value="Snack">Snack</option>
+              <option value="Getränk">Getränk</option>
               <option value="Vegetarisch">Vegetarisch</option>
+              <option value="Vegan">Vegan</option>
               <option value="Sonstiges">Sonstiges</option>
             </select>
           </div>
@@ -582,7 +616,7 @@
   </div>
 
   <div id="toast-container"></div>
-  <script src="js/app.js?v=8"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 
 </html>

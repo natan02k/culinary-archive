@@ -914,8 +914,15 @@ const app = {
 
     document.getElementById('editRezeptId').value = r.rezept_id;
     document.getElementById('eTitle').value = r.titel;
-    document.getElementById('ePrep').value = r.zubereitungszeit;
-    document.getElementById('eCook').value = r.kochzeit;
+
+    const prepInput = document.getElementById('ePrep');
+    prepInput.value = r.zubereitungszeit || 0;
+    document.getElementById('ePrepVal').textContent = prepInput.value + ' Min';
+
+    const cookInput = document.getElementById('eCook');
+    cookInput.value = r.kochzeit || 0;
+    document.getElementById('eCookVal').textContent = cookInput.value + ' Min';
+
     document.getElementById('eDiff').value = r.schwierigkeit;
     document.getElementById('eCat').value = r.kategorie;
     document.getElementById('eTagsArray').value = r.tags || '';
