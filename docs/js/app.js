@@ -369,7 +369,7 @@ const app = {
     // XP logic: Next level every 100 XP
     const currentLevelBaseXP = (level - 1) * 100;
     const progressXP = xp - currentLevelBaseXP;
-    document.getElementById('dashXpLabel').textContent = `${progressXP} / 100 XP`;
+    document.getElementById('dashXpLabel').textContent = `${100 - progressXP} XP`;
     document.getElementById('dashXpBar').style.width = `${progressXP}%`;
 
     // Dynamic Avatar Ranks
@@ -1297,13 +1297,18 @@ const app = {
   checkQuest(type) {
     if (!this.quests) return;
     const maxVals = { like: 3, favorite: 2, recipe: 1 };
+    const xpRewards = { like: 15, favorite: 10, recipe: 50 };
     if (this.quests[type] < maxVals[type]) {
       this.quests[type]++;
       localStorage.setItem('culinaryQuests', JSON.stringify(this.quests));
       this.renderDailyQuests();
       if (this.quests[type] === maxVals[type]) {
         showToast("Quest abgeschlossen! Bonus XP!", "success");
-        // Opt: trigger XP request
+        // trigger XP request
+        this.req('/add-xp', 'POST', { xp: xpRewards[type] }).then(() => {
+          // update dashboard xp display
+          this.checkAuth();
+        }).catch(err => console.error("Could not add quest XP", err));
       }
     }
   },

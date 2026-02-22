@@ -417,6 +417,25 @@ public class MainVerticle extends AbstractVerticle {
       }catch(Exception e) {}
     });
 
+    router.post("/api/add-xp").handler(ctx -> {
+        String username = getUsernameFromToken(ctx);
+        if (username == null) { ctx.response().setStatusCode(401).end(); return; }
+        try {
+            JsonObject body = ctx.getBodyAsJson();
+            int xpToAdd = body.getInteger("xp", 0);
+            if(xpToAdd <= 0 || xpToAdd > 100) { ctx.response().setStatusCode(400).end(); return; }
+
+            client.preparedQuery("UPDATE nutzer SET xp = xp + ?, level = FLOOR((xp + ?) / 100) + 1 WHERE username = ?")
+                .execute(Tuple.of(xpToAdd, xpToAdd, username), res -> {
+                    if (res.succeeded()) {
+                        ctx.response().setStatusCode(200).end(new JsonObject().put("message", "XP added").encode());
+                    } else {
+                        ctx.response().setStatusCode(500).end();
+                    }
+                });
+        } catch(Exception e) { ctx.response().setStatusCode(400).end(); }
+    });
+
     // --- PHASE 2 ENDPOINTS ---
     
     // Edit Recipe
