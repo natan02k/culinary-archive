@@ -705,7 +705,7 @@ const app = {
     zenBtn.style.width = '100%';
     zenBtn.style.marginTop = '1.5rem';
     zenBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-    zenBtn.innerHTML = '🧘 Zen Koch-Modus Starten';
+    zenBtn.innerHTML = '👨‍🍳 Interaktiver Koch-Modus';
     zenBtn.onclick = () => this.openZenMode(id);
     document.getElementById('viewSteps').parentElement.appendChild(zenBtn);
 
@@ -1223,6 +1223,12 @@ const app = {
       this.zenSteps = [rawText]; // fallback
     }
 
+    // Add ingredients as the very first step "Zutaten bereitstellen"
+    if (r.zutaten) {
+      const cleanIng = r.zutaten.replace(/[#*_-]/g, '').trim();
+      this.zenSteps.unshift(`Zutaten bereitstellen:\n<br><span style="font-size: 0.6em; color: var(--text-muted);">${cleanIng.replace(/\n/g, '<br>')}</span>`);
+    }
+
     this.zenStepIndex = 0;
     document.getElementById('zenOverlay').classList.add('active');
 
@@ -1281,7 +1287,23 @@ const app = {
     textEl.style.transform = 'translateY(20px)';
 
     setTimeout(() => {
-      const stepText = this.zenSteps[this.zenStepIndex];
+      let stepText = this.zenSteps[this.zenStepIndex];
+
+      // Auto-numbering logic if the user didn't provide numbers
+      // Step 0 is always the ingredients list (Vorbereitung)
+      if (this.zenStepIndex === 0) {
+        stepText = `<div style="color:var(--primary); font-size:0.6em; text-transform:uppercase; letter-spacing:2px; margin-bottom:1rem;">Vorbereitung</div>${stepText}`;
+      } else {
+        // Check if text already starts with a number like "1." or "1 "
+        const hasNumber = /^\d+[\.\)]?\s/.test(stepText);
+        if (!hasNumber) {
+          stepText = `<div style="color:var(--primary); font-size:0.6em; text-transform:uppercase; letter-spacing:2px; margin-bottom:1rem;">Schritt ${this.zenStepIndex}</div>${stepText}`;
+        } else {
+          // It has a number, extract it for beautiful layout
+          stepText = stepText.replace(/^(\d+[\.\)]?\s)(.*)/, `<div style="color:var(--primary); font-size:0.6em; text-transform:uppercase; letter-spacing:2px; margin-bottom:1rem;">Schritt $1</div>$2`);
+        }
+      }
+
       textEl.innerHTML = this.generateTimers(stepText);
       textEl.style.opacity = '1';
       textEl.style.transform = 'translateY(0)';
