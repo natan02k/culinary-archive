@@ -1233,11 +1233,17 @@ const app = {
     // Swipe support
     this._touchStartX = 0;
     const overlay = document.getElementById('zenOverlay');
-    overlay.ontouchstart = (e) => this._touchStartX = e.changedTouches[0].screenX;
+    overlay.ontouchstart = (e) => {
+      if (e.target.closest('button') || e.target.closest('.zen-timer')) return;
+      this._touchStartX = e.changedTouches[0].screenX;
+    };
     overlay.ontouchend = (e) => {
+      if (e.target.closest('button') || e.target.closest('.zen-timer')) return;
+      if (!this._touchStartX) return; // Prevent if touch started on a button
       const touchEndX = e.changedTouches[0].screenX;
       if (this._touchStartX - touchEndX > 50) this.zenNext();
-      if (touchEndX - this._touchStartX > 50) this.zenPrev();
+      else if (touchEndX - this._touchStartX > 50) this.zenPrev();
+      this._touchStartX = 0; // Reset after swipe
     };
   },
 
